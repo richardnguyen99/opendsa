@@ -65,7 +65,7 @@ Although I have no guarantee nor support for you to use IRL, every suggestion or
 - Algorithms:
   - [ ] Sorting
     - [ ] Comparison-based
-      - [ ] Bubble sort
+      - [X] Bubble sort
       - [ ] Insertion sort
       - [ ] Selection sort
       - [ ] Quick sort
