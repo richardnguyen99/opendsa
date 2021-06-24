@@ -66,9 +66,9 @@ Although I have no guarantee nor support for you to use IRL, every suggestion or
   - [ ] Sorting
     - [ ] Comparison-based
       - [X] Bubble sort
-      - [ ] Insertion sort
-      - [ ] Selection sort
-      - [ ] Quick sort
+      - [X] Insertion sort
+      - [X] Selection sort
+      - [X] Quick sort
       - [ ] Merge sort
       - [ ] Heap sort
     - [ ] Non comparison-based
