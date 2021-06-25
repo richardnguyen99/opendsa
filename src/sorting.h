@@ -1,6 +1,6 @@
 /**
  * @file sorting.h
- * @author your name (you@domain.com)
+ * @author Richard Nguyen
  * @brief Implementations for sorting algorithms
  * 
  * This header contains several implementations for 
@@ -244,5 +244,10 @@ namespace opendsa
             // Copy the temp to the original container
             std::copy(std::begin(temp), std::end(temp), begin);
         }
+    }
+
+    template <typename Iter>
+    void heap_sort(Iter begin, Iter end)
+    {
     }
 }

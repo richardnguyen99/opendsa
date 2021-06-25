@@ -53,23 +53,39 @@ Although I have no guarantee nor support for you to use IRL, every suggestion or
   - [ ] Stack
   - [ ] Queue
   - [ ] Linked list
-  - [ ] Tree
+    - [ ] Doubly-linked list
+    - [ ] Singly-linked list
+    - [ ] Reverse a linked list
+    - [ ] Insertion
+    - [ ] Deletion
+  - [X] Tree
+    - [X] Binary tree
+      - [ ] AVL tree
+      - [ ] Red-black tree
+      - [ ] Check balance
+      - [X] Traversing
+        - [X] Pre-order
+        - [X] In-order
+        - [X] Post-order
+        - [X] Breadth-first search (BFS)
+        - [X] Depth-first search (DFS)
+      - [ ] Invert 
+     - [ ] Heap
+    - [ ] Trie
   - [ ] Set
   - [ ] Map
   - [ ] Graph
   - [ ] Matrix
-  - [ ] Heap
-  - [ ] Trie
   - [ ] String
 
 - Algorithms:
-  - [ ] Sorting
-    - [ ] Comparison-based
+  - [X] Sorting
+    - [X] Comparison-based
       - [X] Bubble sort
       - [X] Insertion sort
       - [X] Selection sort
       - [X] Quick sort
-      - [ ] Merge sort
+      - [X] Merge sort
       - [ ] Heap sort
     - [ ] Non comparison-based
       - [ ] Radix sort
