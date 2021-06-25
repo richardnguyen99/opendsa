@@ -33,3 +33,4 @@
 
 # Local files for testing and running 
 main.cpp
+build/
