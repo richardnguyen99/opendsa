@@ -3,14 +3,16 @@ cmake_minimum_required(VERSION 3.12)
 add_executable(opendsa_sorting_test)
 target_sources(
   opendsa_sorting_test 
-  PRIVATE sorting.cc)
+  PRIVATE 
+    sorting/bubble_sort.cc
+    sorting/insertion_sort.cc)
 
 target_include_directories(
   opendsa_sorting_test PRIVATE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
                           $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>)
 
 target_compile_features(opendsa_sorting_test PRIVATE cxx_std_17)
-target_link_libraries(opendsa_sorting_test gtest_main)
+target_link_libraries(opendsa_sorting_test gtest_main gmock_main)
 
 target_compile_options(
   opendsa_sorting_test 

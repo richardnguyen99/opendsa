@@ -74,7 +74,7 @@ if(OPENDSA_INSTALL_LIBRARY)
                 "${PROJECT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
           DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/${PROJECT_NAME}/cmake)
 
-  install(DIRECTORY ${PROJECT_SOURCE_DIR}/src
+  install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/opendsa
           DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 endif()
 

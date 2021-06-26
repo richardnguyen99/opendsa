@@ -170,4 +170,68 @@ namespace opendsa
         std::unique_ptr<binary_tree_node<T>> left_uptr_ = nullptr;
         std::unique_ptr<binary_tree_node<T>> right_uptr_ = nullptr;
     };
+
+    /**
+     * @brief Binary search tree with specified comparator
+     */
+    template <typename T, typename Comparator>
+    class binary_search_tree
+    {
+    public:
+        binary_search_tree(const T &value, Comparator cmp)
+        {
+            root_uptr_ = std::make_unique<binary_tree_node<T>>(value);
+            comparator_ = cmp;
+        }
+
+        binary_tree_node<T> &root() const
+        {
+            return *root_uptr_;
+        }
+
+        void insert(const T &value)
+        {
+            auto node = std::make_unqiue<binary_tree_node<T>>(value);
+
+            if (root_uptr_ == nullptr)
+            {
+                root_uptr_ = std::move(node);
+            }
+            else
+            {
+                insert_subtree(std::move(node), root_uptr_.get());
+            }
+        }
+
+    private:
+        std::unique_ptr<binary_tree_node<T>> root_uptr_ = nullptr;
+
+        Comparator comparator_;
+
+        void insert_subtree(std::unique_ptr<binary_tree_node<T>> node, binary_tree_node<T> *root_ptr)
+        {
+            if (comparator_(node->value_, root_ptr->value_))
+            {
+                if (root_ptr->left_uptr_ == nullptr)
+                {
+                    root_ptr->left_uptr_ = std::move(node);
+                }
+                else
+                {
+                    insert_subtree(std::move(node), root_uptr_->left_uptr_.get());
+                }
+            }
+            else
+            {
+                if (root_ptr->right_uptr_ == nullptr)
+                {
+                    root_ptr->right_uptr_ = std::move(node);
+                }
+                else
+                {
+                    insnert_subtree(std::move(node), root_uptr_->right_uptr_.get());
+                }
+            }
+        }
+    };
 }

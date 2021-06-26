@@ -60,6 +60,7 @@ Although I have no guarantee nor support for you to use IRL, every suggestion or
     - [ ] Deletion
   - [X] Tree
     - [X] Binary tree
+      - [X] Binary Search Tree
       - [ ] AVL tree
       - [ ] Red-black tree
       - [ ] Check balance
@@ -69,7 +70,7 @@ Although I have no guarantee nor support for you to use IRL, every suggestion or
         - [X] Post-order
         - [X] Breadth-first search (BFS)
         - [X] Depth-first search (DFS)
-      - [ ] Invert 
+      - [ ] Invert a binary tree
      - [ ] Heap
     - [ ] Trie
   - [ ] Set
@@ -98,3 +99,5 @@ Although I have no guarantee nor support for you to use IRL, every suggestion or
   - [ ] Recursion
   - [ ] Greedy algorithms
   - [ ] Famous algorithms
+
+This repository also supports testing, CI/CD, build and install. Documentation will be out in the future.
