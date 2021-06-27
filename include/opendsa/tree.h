@@ -191,7 +191,7 @@ namespace opendsa
 
         void insert(const T &value)
         {
-            auto node = std::make_unqiue<binary_tree_node<T>>(value);
+            auto node = std::make_unique<binary_tree_node<T>>(value);
 
             if (root_uptr_ == nullptr)
             {

@@ -1,4 +1,3 @@
-
 /**
  * @file test/sorting/insertion_sort.cc
  * @author Richard Nguyen 

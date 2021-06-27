@@ -5,7 +5,12 @@ target_sources(
   opendsa_sorting_test 
   PRIVATE 
     sorting/bubble_sort.cc
-    sorting/insertion_sort.cc)
+    sorting/insertion_sort.cc
+    sorting/selection_sort.cc
+    sorting/quick_sort.cc
+    sorting/merge_sort.cc
+    sorting/counting_sort.cc
+    )
 
 target_include_directories(
   opendsa_sorting_test PRIVATE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>

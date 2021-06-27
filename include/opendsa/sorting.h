@@ -15,6 +15,7 @@
 #pragma once
 
 #include <algorithm>
+#include <iterator>
 #include <vector>
 
 namespace opendsa
@@ -249,5 +250,44 @@ namespace opendsa
     template <typename Iter>
     void heap_sort(Iter begin, Iter end)
     {
+    }
+
+    /**
+     * @brief Sorting containers using the couting sort technique
+     * 
+     * The algorithm counts the number of objects having distinct 
+     * key values in a way to tell the frequency the according
+     * values appear in the container. Then it modifies the storage
+     * to indicate at which elements should be in the output.
+     * 
+     * @param begin 
+     * @param end 
+     */
+    template <typename Iter>
+    void counting_sort(Iter begin, Iter end)
+    {
+        // Calculate the range of the count container
+        const auto min = *(std::min_element(begin, end));
+        const auto max = *(std::max_element(begin, end));
+
+        // Initialize the count container with 0
+        std::vector<std::size_t> count(max - min + 1, 0);
+
+        // Count how often a unique object occurs
+        std::for_each(begin, end, [&](auto x)
+                      { ++count[x - min]; });
+
+        // Modify the count container
+        for (auto cursor = std::begin(count); cursor != std::end(count); ++cursor)
+        {
+            // Index will help to get the current element in the actual container
+            auto idx = std::distance(std::begin(count), cursor);
+
+            // Replace the current iterator with sorted value
+            std::fill_n(begin, *cursor, idx + min);
+
+            // Move the begin iterator so it doesn't collapse
+            std::advance(begin, *cursor);
+        }
     }
 }

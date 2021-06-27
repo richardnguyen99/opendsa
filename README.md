@@ -88,9 +88,9 @@ Although I have no guarantee nor support for you to use IRL, every suggestion or
       - [X] Quick sort
       - [X] Merge sort
       - [ ] Heap sort
-    - [ ] Non comparison-based
+    - [X] Non comparison-based
       - [ ] Radix sort
-      - [ ] Counting sort
+      - [X] Counting sort
       - [ ] Bucket sort
   - [ ] Search
     - [ ] Linear search
