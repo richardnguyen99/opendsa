@@ -4,7 +4,7 @@
  * @brief Algorithm implementation for tree data structures
  * @version 0.1
  * @date 2021-06-25
- * 
+ *
  * @copyright Copyright (c) 2021
  */
 
@@ -52,7 +52,8 @@ namespace opendsa
             depth_first_search(*(node.left_uptr_), visitor);
         }
 
-        // Traverse the right most sub trees after traversing the left most trees
+        // Traverse the right most sub trees after traversing the left most
+        // trees
         if (node.right_uptr_ != nullptr)
         {
             depth_first_search(*(node.right_uptr_), visitor);
@@ -62,7 +63,8 @@ namespace opendsa
     }
 
     /**
-     * @brief Traverse through a binary tree using breadth-first-search technique
+     * @brief Traverse through a binary tree using breadth-first-search
+     * technique
      */
     template <typename T, typename Visitor>
     void breadth_first_search(const binary_tree_node<T> &node, Visitor visitor)
@@ -122,7 +124,8 @@ namespace opendsa
             in_order_traverse(*(node.left_uptr_), visitor);
         }
 
-        // Visit the left child, then the current node and finally the right child
+        // Visit the left child, then the current node and finally the right
+        // child
         visitor(node.value_);
 
         if (node.right_uptr_ != nullptr)
@@ -147,7 +150,8 @@ namespace opendsa
             post_order_traverse(node.right_uptr_, visitor);
         }
 
-        // Visit the left child first, then the right child and finally the current node
+        // Visit the left child first, then the right child and finally the
+        // current node
         visitor(node.value_);
     }
-}
+} // namespace opendsa

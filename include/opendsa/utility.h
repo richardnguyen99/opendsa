@@ -1,19 +1,19 @@
 #pragma once
 
-#include <vector>
 #include <ostream>
+#include <vector>
 
 namespace opendsa
 {
     /**
      * @brief General generator with specified container size
-     * 
+     *
      * The function creates a random vector of objects of type T
      * according the specified generator passed in.
-     * 
+     *
      * @param size Desired size of the container
      * @param gen Specified generator to tell how the generating works
-     * @return std::vector<T> 
+     * @return std::vector<T>
      */
     template <typename T, typename _Generator>
     std::vector<T> gen_randarr(std::size_t size, _Generator gen)
@@ -30,15 +30,16 @@ namespace opendsa
     }
 
     std::vector<int> gen_randiarr(std::size_t size, std::size_t range);
-    std::vector<int> gen_randiarr(std::size_t size, std::size_t lower, std::size_t upper);
+    std::vector<int> gen_randiarr(std::size_t size, std::size_t lower,
+                                  std::size_t upper);
 
     /**
-     * @brief Helper overloaded function to print out vector to 
+     * @brief Helper overloaded function to print out vector to
      * the terminal
-     * 
-     * @param out 
-     * @param container 
-     * @return std::ostream& 
+     *
+     * @param out
+     * @param container
+     * @return std::ostream&
      */
     template <typename T>
     std::ostream &operator<<(std::ostream &out, const std::vector<T> &container)
@@ -53,4 +54,4 @@ namespace opendsa
         }
         out << " ]" << std::endl;
     }
-}
+} // namespace opendsa

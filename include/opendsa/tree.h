@@ -1,34 +1,34 @@
 /**
  * @file tree.h
- * @author Richard Nguyen 
- * @brief 
+ * @author Richard Nguyen
+ * @brief
  * @version 0.1
  * @date 2021-06-24
- * 
- * This header contains several implementations for 
- * tree-based data structures, and methods that only work 
+ *
+ * This header contains several implementations for
+ * tree-based data structures, and methods that only work
  * on trees.
- * 
+ *
  * @copyright Copyright (c) 2021
  */
 
 #pragma once
 
 #include <memory>
-#include <vector>
 #include <queue>
+#include <vector>
 
 namespace opendsa
 {
     /**
      * @brief Basic, general basic tree implementation
-     * 
-     * This class represents a node of a tree. It holds 
-     * a value to be its representative. The node may 
+     *
+     * This class represents a node of a tree. It holds
+     * a value to be its representative. The node may
      * also contain a parent pointer and many unique
      * child pointers.
-     * 
-     * @tparam T 
+     *
+     * @tparam T
      */
     template <typename T>
     class tree_node
@@ -62,11 +62,15 @@ namespace opendsa
                 std::vector<std::size_t> sub_heights;
 
                 // Recursively find sub heights
-                std::transform(std::cbegin(children_), std::cend(children_), std::back_inserter(sub_heights), [](const std::unique_ptr<tree_node<T>> &child)
+                std::transform(std::cbegin(children_), std::cend(children_),
+                               std::back_inserter(sub_heights),
+                               [](const std::unique_ptr<tree_node<T>> &child)
                                { return child->height(); });
 
                 // Find the highest tree
-                height = *(std::max_element(std::cbegin(sub_heights), std::cend(sub_heights))) + 1;
+                height = *(std::max_element(std::cbegin(sub_heights),
+                                            std::cend(sub_heights))) +
+                         1;
             }
 
             return height;
@@ -100,10 +104,13 @@ namespace opendsa
                 // Check degrees of sub node
                 std::vector<std::size_t> sub_degrees;
 
-                std::transform(std::cbegin(children_), std::cend(children_), std::back_inserter(sub_degrees), [](const std::unique_ptr<tree_node<T>> &child)
+                std::transform(std::cbegin(children_), std::cend(children_),
+                               std::back_inserter(sub_degrees),
+                               [](const std::unique_ptr<tree_node<T>> &child)
                                { return child->degree(); });
 
-                std::size_t max_sub_degree = *(std::max_element(std::cbegin(sub_degrees), std::cend(sub_degrees)));
+                std::size_t max_sub_degree = *(std::max_element(
+                    std::cbegin(sub_degrees), std::cend(sub_degrees)));
 
                 degree = std::max(children_.size(), max_sub_degree);
             }
@@ -143,17 +150,14 @@ namespace opendsa
         /**
          * @brief Get the root value of the tree
          */
-        T &root() const
-        {
-            return value_;
-        }
+        T &root() const { return value_; }
 
     private:
         T value_;
 
         // Parent pointer cannnot be unique as there may be
         // more than one pointer pointing to it.
-        tree_node<T> *parent_ptr_ = nullptr;
+        tree_node<T> *                             parent_ptr_ = nullptr;
         std::vector<std::unique_ptr<tree_node<T>>> children_;
     };
 
@@ -165,9 +169,9 @@ namespace opendsa
     {
         binary_tree_node(const T &value) : value_{value} {}
 
-        T value_;
-        binary_tree_node<T> *parent_ptr = nullptr;
-        std::unique_ptr<binary_tree_node<T>> left_uptr_ = nullptr;
+        T                                    value_;
+        binary_tree_node<T> *                parent_ptr  = nullptr;
+        std::unique_ptr<binary_tree_node<T>> left_uptr_  = nullptr;
         std::unique_ptr<binary_tree_node<T>> right_uptr_ = nullptr;
     };
 
@@ -180,14 +184,11 @@ namespace opendsa
     public:
         binary_search_tree(const T &value, Comparator cmp)
         {
-            root_uptr_ = std::make_unique<binary_tree_node<T>>(value);
+            root_uptr_  = std::make_unique<binary_tree_node<T>>(value);
             comparator_ = cmp;
         }
 
-        binary_tree_node<T> &root() const
-        {
-            return *root_uptr_;
-        }
+        binary_tree_node<T> &root() const { return *root_uptr_; }
 
         void insert(const T &value)
         {
@@ -208,7 +209,8 @@ namespace opendsa
 
         Comparator comparator_;
 
-        void insert_subtree(std::unique_ptr<binary_tree_node<T>> node, binary_tree_node<T> *root_ptr)
+        void insert_subtree(std::unique_ptr<binary_tree_node<T>> node,
+                            binary_tree_node<T> *                root_ptr)
         {
             if (comparator_(node->value_, root_ptr->value_))
             {
@@ -218,7 +220,8 @@ namespace opendsa
                 }
                 else
                 {
-                    insert_subtree(std::move(node), root_uptr_->left_uptr_.get());
+                    insert_subtree(std::move(node),
+                                   root_uptr_->left_uptr_.get());
                 }
             }
             else
@@ -229,9 +232,10 @@ namespace opendsa
                 }
                 else
                 {
-                    insnert_subtree(std::move(node), root_uptr_->right_uptr_.get());
+                    insnert_subtree(std::move(node),
+                                    root_uptr_->right_uptr_.get());
                 }
             }
         }
     };
-}
+} // namespace opendsa

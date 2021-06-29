@@ -48,7 +48,7 @@ Although I have no guarantee nor support for you to use IRL, every suggestion or
 # Features
 
 - Data structures:
-  - [ ] Static array
+  - [X] Static array
   - [ ] Dynamic array
   - [ ] Stack
   - [ ] Queue

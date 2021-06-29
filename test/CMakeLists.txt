@@ -2,8 +2,8 @@ cmake_minimum_required(VERSION 3.12)
 
 add_executable(opendsa_sorting_test)
 target_sources(
-  opendsa_sorting_test 
-  PRIVATE 
+  opendsa_sorting_test
+  PRIVATE
     sorting/bubble_sort.cc
     sorting/insertion_sort.cc
     sorting/selection_sort.cc
@@ -20,7 +20,7 @@ target_compile_features(opendsa_sorting_test PRIVATE cxx_std_17)
 target_link_libraries(opendsa_sorting_test gtest_main gmock_main)
 
 target_compile_options(
-  opendsa_sorting_test 
+  opendsa_sorting_test
   PRIVATE
     $<$<CXX_COMPILER_ID:MSVC>:/std:c++17>
     $<$<CXX_COMPILER_ID:MSVC>:/W4>
@@ -30,22 +30,25 @@ target_compile_options(
     $<$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:-pedantic>
 )
 
-add_executable(opendsa_container_test)
+add_executable(opendsa_static_array_test)
 target_sources(
-  opendsa_container_test
-  PRIVATE 
-    container/init.cc
+  opendsa_static_array_test
+  PRIVATE
+    static_array/init.cc
+    static_array/print.cc
+    static_array/operation.cc
+    static_array/access.cc
     )
 
 target_include_directories(
-  opendsa_container_test PRIVATE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+  opendsa_static_array_test PRIVATE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
                           $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>)
 
-target_compile_features(opendsa_container_test PRIVATE cxx_std_17)
-target_link_libraries(opendsa_container_test gtest_main gmock_main)
+target_compile_features(opendsa_static_array_test PRIVATE cxx_std_17)
+target_link_libraries(opendsa_static_array_test gtest_main gmock_main)
 
 target_compile_options(
-  opendsa_container_test 
+  opendsa_static_array_test
   PRIVATE
     $<$<CXX_COMPILER_ID:MSVC>:/std:c++17>
     $<$<CXX_COMPILER_ID:MSVC>:/W4>
@@ -57,4 +60,4 @@ target_compile_options(
 
 
 add_test(NAME opendsa_sorting_test COMMAND opendsa_sorting_test)
-add_test(NAME opendsa_container_test COMMAND opendsa_container_test)
+add_test(NAME opendsa_static_array_test COMMAND opendsa_static_array_test)

@@ -1,16 +1,16 @@
 /**
  * @file test/sorting/counting_sort.cc
- * @author Richard Nguyen 
+ * @author Richard Nguyen
  * @brief Testing cases for counting sorting implementation
  * @version 0.1
  * @date 2021-06-24
- * 
+ *
  * @copyright Copyright (c) 2021
  */
 
-#include <vector>
-#include <gtest/gtest.h>
 #include <gmock/gmock.h>
+#include <gtest/gtest.h>
+#include <vector>
 
 #include <opendsa/sorting.h>
 
