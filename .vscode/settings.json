@@ -57,6 +57,7 @@
         "set": "cpp",
         "iomanip": "cpp",
         "cinttypes": "cpp",
-        "variant": "cpp"
-    }
+        "variant": "cpp",
+        "cassert": "cpp"
+    },
 }
