@@ -19,7 +19,7 @@ This repository is supposed to be a place where I host my own implementations of
 
     #include <iostream>
     #include <vector>
-    #include "sorting.h" 
+    #include "sorting.h"
 
     int main()
     {
@@ -34,7 +34,7 @@ This repository is supposed to be a place where I host my own implementations of
 
         ...
     }
-    
+
     ```
 
 ## Disclaimer
@@ -49,7 +49,7 @@ Although I have no guarantee nor support for you to use IRL, every suggestion or
 
 - Data structures:
   - [X] Static array
-  - [ ] Dynamic array
+  - [X] Dynamic array
   - [ ] Stack
   - [ ] Queue
   - [ ] Linked list

@@ -1,21 +1,19 @@
 /**
  * @file container.h
  * @author Richard Nguyen (richard.ng0616@gmail.com)
- * @brief Headers for list-based container
+ * @brief Headers for fixed list-based container
  * @version 0.1
  * @date 2021-06-26
  *
  * @copyright Copyright (c) 2021
  */
 
-#include <array>
 #include <cassert>
 #include <cstddef>
 #include <iterator>
 #include <memory>
 #include <type_traits>
 #include <utility>
-#include <vector>
 
 #pragma once
 
@@ -134,15 +132,29 @@ namespace opendsa
         using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
         // Member function
+
+        /**
+         * @brief Construct an empty static array with the initial size of 8
+         */
         constexpr explicit static_array() noexcept
             : size_{8}, container_{std::make_unique<value_type[]>(size_)}
         {
         }
+
+        /**
+         * @brief Construct an empty static array with the specified initial
+         * size
+         */
         constexpr static_array(size_type count)
             : size_{count}, container_{std::make_unique<value_type[]>(size_)}
         {
         }
 
+        /**
+         * @brief Construct a static array with elements in range
+         *
+         * @tparam Iter Iterator range of elements
+         */
         template <typename Iter>
         constexpr static_array(Iter first, Iter last) noexcept
         {
@@ -157,6 +169,9 @@ namespace opendsa
             }
         }
 
+        /**
+         * @brief Construct a static array with copies of the contents of other
+         */
         constexpr static_array(const static_array &other) noexcept
         {
             size_      = std::distance(other.cbegin(), other.cend());
@@ -170,12 +185,18 @@ namespace opendsa
             }
         }
 
+        /**
+         * @brief Construct a static array with moved of the contents of other
+         */
         constexpr static_array(static_array &&other) noexcept
         {
             size_      = std::distance(std::begin(other), std::end(other));
             container_ = std::move(other.container_);
         }
 
+        /**
+         * @brief Construct a static array with initial list of elements
+         */
         constexpr static_array(std::initializer_list<value_type> init)
         {
             size_      = init.size();
@@ -189,8 +210,14 @@ namespace opendsa
         }
 
         // Capacity functions
+        /**
+         * @brief Returns the max size of the array
+         */
         constexpr size_type size() const noexcept { return size_; }
 
+        /**
+         * @brief Check if the container is empty
+         */
         constexpr bool empty() const noexcept { return size_ == 0; }
 
         // Iterators
