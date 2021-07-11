@@ -12,9 +12,9 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <deque>
 #include <iterator>
 #include <memory>
-#include <vector>
 
 namespace opendsa
 {
