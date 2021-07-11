@@ -482,16 +482,16 @@ namespace opendsa
                 std::allocator<T> alloc;
                 using traits_t = std::allocator_traits<decltype(alloc)>;
 
-                traits_t::construct(alloc, start_ptr_.current_,
+                traits_t::construct(alloc, start_ptr_.current_ - 1,
                                     std::forward<Args>(args)...);
 
-                ++start_ptr_.current_;
+                --start_ptr_.current_;
             }
             else
             {
-                *(start_ptr_.node_ + 1) = std::make_unique<T[]>(buffer_size());
-                start_ptr_.set_node_(start_ptr_.node_ + 1);
-                start_ptr_.current_ = start_ptr_.first_;
+                *(start_ptr_.node_ - 1) = std::make_unique<T[]>(buffer_size());
+                start_ptr_.set_node_(start_ptr_.node_ - 1);
+                start_ptr_.current_ = start_ptr_.last_ - 1;
 
                 // std::allocator<T>::construct is marked as deprecated in c++17
                 // and removed in c++20, so we use allocator_traits
@@ -500,8 +500,6 @@ namespace opendsa
 
                 traits_t::construct(alloc, start_ptr_.current_,
                                     std::forward<Args>(args)...);
-
-                ++start_ptr_.current_;
             }
         }
 
