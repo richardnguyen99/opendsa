@@ -516,7 +516,7 @@ namespace opendsa
         reference emplace_back(Args &&...args)
         {
             // Check if there is still space for new element
-            if (finish_ptr_.current_ != finish_ptr_.last_)
+            if (finish_ptr_.current_ != finish_ptr_.last_ - 1)
             {
                 // std::allocator<T>::construct is marked as deprecated in c++17
                 // and removed in c++20, so we use allocator_traits
@@ -530,20 +530,10 @@ namespace opendsa
             }
             else
             {
-                *(finish_ptr_.node_ + 1) = std::make_unique<T[]>(buffer_size());
-                finish_ptr_.set_node_(finish_ptr_.node_ + 1);
-                finish_ptr_.current_ = finish_ptr_.first_;
-
-                // std::allocator<T>::construct is marked as deprecated in c++17
-                // and removed in c++20, so we use allocator_traits
-                std::allocator<T> alloc;
-                using traits_t = std::allocator_traits<decltype(alloc)>;
-
-                traits_t::construct(alloc, finish_ptr_.current_,
-                                    std::forward<Args>(args)...);
-
-                ++finish_ptr_.current_;
+                push_back_(std::forward<Args>(args)...);
             }
+
+            return back();
         }
 
         /**
@@ -569,18 +559,10 @@ namespace opendsa
             }
             else
             {
-                *(start_ptr_.node_ - 1) = std::make_unique<T[]>(buffer_size());
-                start_ptr_.set_node_(start_ptr_.node_ - 1);
-                start_ptr_.current_ = start_ptr_.last_ - 1;
-
-                // std::allocator<T>::construct is marked as deprecated in c++17
-                // and removed in c++20, so we use allocator_traits
-                std::allocator<T> alloc;
-                using traits_t = std::allocator_traits<decltype(alloc)>;
-
-                traits_t::construct(alloc, start_ptr_.current_,
-                                    std::forward<Args>(args)...);
+                push_front_(std::forward<Args>(args)...);
             }
+
+            return front();
         }
 
         /**
@@ -780,6 +762,37 @@ namespace opendsa
         void range_initialize_(InputIter first, InputIter last,
                                std::forward_iterator_tag)
         {
+        }
+
+        template <typename... Args>
+        void push_back_(Args &&...args)
+        {
+            *(finish_ptr_.node_ + 1) = std::make_unique<T[]>(buffer_size());
+            // std::allocator<T>::construct is marked as deprecated in c++17
+            // and removed in c++20, so we use allocator_traits
+            std::allocator<T> alloc;
+            using traits_t = std::allocator_traits<decltype(alloc)>;
+
+            traits_t::construct(alloc, finish_ptr_.current_,
+                                std::forward<Args>(args)...);
+            finish_ptr_.set_node_(finish_ptr_.node_ + 1);
+            finish_ptr_.current_ = finish_ptr_.first_;
+        }
+
+        template <typename... Args>
+        void push_front_(Args &&...args)
+        {
+            *(start_ptr_.node_ - 1) = std::make_unique<T[]>(buffer_size());
+            start_ptr_.set_node_(start_ptr_.node_ - 1);
+            start_ptr_.current_ = start_ptr_.last_ - 1;
+
+            // std::allocator<T>::construct is marked as deprecated in c++17
+            // and removed in c++20, so we use allocator_traits
+            std::allocator<T> alloc;
+            using traits_t = std::allocator_traits<decltype(alloc)>;
+
+            traits_t::construct(alloc, start_ptr_.current_,
+                                std::forward<Args>(args)...);
         }
     };
 
