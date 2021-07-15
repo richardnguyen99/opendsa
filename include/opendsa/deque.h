@@ -47,16 +47,16 @@ namespace opendsa
      * This class supports traversing, adding, removing, assigning and many
      * other functionalities and operations to work with the opendsa::deque.
      */
-    template <typename T>
+    template <class T, class U = std::remove_cv_t<T>>
     struct deque_iterator
     {
-        using value_type        = T;
-        using reference         = T &;
-        using pointer           = T *;
+        using value_type        = U;
+        using reference         = U &;
+        using pointer           = U *;
         using size_type         = std::size_t;
         using difference_type   = std::ptrdiff_t;
         using iterator_category = std::random_access_iterator_tag;
-        using const_iterator    = deque_iterator<const T>;
+        using const_iterator    = deque_iterator<const U>;
         // Use std::remove_cv_t to remove const constraints so that
         // we can work with both iterator and const_iterator at the same time.
         using iterator    = deque_iterator<std::remove_cv_t<T>>;
@@ -81,7 +81,7 @@ namespace opendsa
         {
         }
 
-        // deque_iterator &operator=(const iterator &) = default;
+        deque_iterator &operator=(const deque_iterator &) = default;
 
         deque_iterator &operator+=(difference_type n) noexcept
         {
@@ -92,19 +92,25 @@ namespace opendsa
             }
             else
             {
-                const difference_type node_offset =
-                    offset > 0
-                        ? offset / difference_type(buffer_size())
-                        : -difference_type((-offset - 1) / buffer_size()) - 1;
+                const difference_type node_offset
+                    = offset > 0
+                          ? offset / difference_type(buffer_size())
+                          : -difference_type((-offset - 1) / buffer_size()) - 1;
 
                 set_node_(node_ + node_offset);
-                current_ =
-                    first_ +
-                    (offset - node_offset * difference_type(buffer_size()));
+                current_
+                    = first_
+                      + (offset - node_offset * difference_type(buffer_size()));
             }
 
             return *this;
         }
+
+        deque_iterator &operator-=(difference_type n) noexcept
+        {
+            return *this += -n;
+        }
+
         reference operator*() const noexcept { return *current_; }
 
         reference operator[](difference_type n) const noexcept
@@ -158,6 +164,11 @@ namespace opendsa
             last_  = first_ + buffer_size();
         }
 
+        deque_iterator<U> const_cast_() const noexcept
+        {
+            return deque_iterator<U>(current_, node_);
+        }
+
         friend deque_iterator operator+(const deque_iterator &x,
                                         difference_type       n) noexcept
         {
@@ -165,10 +176,33 @@ namespace opendsa
             tmp += n;
             return tmp;
         }
+
         friend deque_iterator operator+(difference_type       n,
                                         const deque_iterator &x) noexcept
         {
             return x + n;
+        }
+
+        friend deque_iterator operator-(const deque_iterator &x,
+                                        difference_type       n) noexcept
+        {
+            deque_iterator tmp = x;
+            tmp -= n;
+            return tmp;
+        }
+
+        friend deque_iterator operator-(difference_type       n,
+                                        const deque_iterator &x) noexcept
+        {
+            return x - n;
+        }
+
+        friend difference_type operator-(const deque_iterator &x,
+                                         const deque_iterator &y) noexcept
+        {
+            return difference_type(buffer_size())
+                       * (x.node_ - y.node_ - int(x.node_ != 0))
+                   + (x.current_ - x.first_) + (y.last_ - y.current_);
         }
     };
 
@@ -321,38 +355,42 @@ namespace opendsa
 
         // Iterators ===
         /**
-         * @brief Iterator to the beginning data in the deque.
+         * @brief Iterator to the beginning data in the deque. Use with
+         * std::begin()
          */
         iterator begin() noexcept { return start_ptr_; }
 
         /**
-         * @brief Iterator to the beginning data in the deque.
+         * @brief Iterator to the beginning data in the deque. Use with
+         * std::cbegin()
          */
         const_iterator begin() const noexcept { return start_ptr_; }
 
         /**
-         * @brief Read-only iterator to the beginning data in the deque.
+         * @brief Read-only iterator to the beginning data in the deque. Use by
+         * its own.
          */
         const_iterator cbegin() const noexcept { return start_ptr_; }
 
         /**
-         * @brief Iterator to the ending data in the deque.
+         * @brief Iterator to the ending data in the deque. Use with std::end()
          */
         iterator end() noexcept { return finish_ptr_; }
 
         /**
-         * @brief Iterator to the ending data in the deque.
+         * @brief Iterator to the ending data in the deque. Use with std::cend()
          */
         const_iterator end() const noexcept { return finish_ptr_; }
 
         /**
-         * @brief Read-only iterator to the ending data in the deque.
+         * @brief Read-only iterator to the ending data in the deque. Use by its
+         * own
          */
         const_iterator cend() const noexcept { return finish_ptr_; }
 
         /**
          * @brief Iterator to the ending data as the first iterator in the
-         * deque.
+         * deque. Use with std::rbegin()
          */
         reverse_iterator rbegin() noexcept
         {
@@ -361,7 +399,7 @@ namespace opendsa
 
         /**
          * @brief Iterator to the ending data as the first iterator in the
-         * deque.
+         * deque. Use with std::crbegin()
          */
         const_reverse_iterator rbegin() const noexcept
         {
@@ -370,7 +408,7 @@ namespace opendsa
 
         /**
          * @brief Read-only iterator to the ending data as the first iterator in
-         * the deque.
+         * the deque. Use by its own
          */
         const_reverse_iterator crbegin() const noexcept
         {
@@ -379,7 +417,7 @@ namespace opendsa
 
         /**
          * @brief Iterator to the beginning data as the ending iterator in the
-         * deque.
+         * deque. Use with std::rend()
          */
         reverse_iterator rend() noexcept
         {
@@ -388,7 +426,7 @@ namespace opendsa
 
         /**
          * @brief Iterator to the beginning data as the ending iterator in the
-         * deque.
+         * deque. Use with std::crend()
          */
         const_reverse_iterator rend() const noexcept
         {
@@ -397,7 +435,7 @@ namespace opendsa
 
         /**
          * @brief Read-only iterator to the beginning data as the ending
-         * iterator in the deque.
+         * iterator in the deque. Use by its own.
          */
         const_reverse_iterator crend() const noexcept
         {
@@ -454,22 +492,22 @@ namespace opendsa
         /**
          * @brief Access to the first data in the deque
          */
-        reference front() noexcept {}
+        reference front() noexcept { return *begin(); }
 
         /**
          * @brief Read-only access to the first data in the deque
          */
-        const_reference front() const noexcept {}
+        const_reference front() const noexcept { return *begin(); }
 
         /**
          * @brief Access to the end data in the deque
          */
-        reference back() noexcept {}
+        reference back() noexcept { return *end(); }
 
         /**
          * @brief Read-only access to the end data in the deque
          */
-        const_reference back() const noexcept {}
+        const_reference back() const noexcept { return *end(); }
         // Capacity ===
         /**
          * @brief Checks if the deque is empty or not
@@ -505,6 +543,20 @@ namespace opendsa
         template <class... Args>
         iterator emplace(const_iterator pos, Args &&...args)
         {
+            if (pos.current_ == start_ptr_.current_)
+            {
+                emplace_front(std::forward<Args>(args)...);
+                return start_ptr_;
+            }
+            else if (pos.current_ == finish_ptr_.current_)
+            {
+                emplace_back(std::forward<Args>(args)...);
+                iterator tmp = finish_ptr_;
+                --tmp;
+                return tmp;
+            }
+            else
+                return insert_(pos.const_cast_(), std::forward<Args>(args)...);
         }
 
         /**
@@ -571,7 +623,23 @@ namespace opendsa
          * @param pos  A const_iterator into the deque
          * @param value Value to be inserted.
          */
-        iterator insert(const_iterator pos, const_reference value) {}
+        iterator insert(const_iterator pos, const_reference value)
+        {
+            if (pos.current_ == start_ptr_.current_)
+            {
+                push_front(value);
+                return start_ptr_;
+            }
+            else if (pos.current_ = finish_ptr_.current_)
+            {
+                push_back(value);
+                iterator tmp = finish_ptr_;
+                --tmp;
+                return tmp;
+            }
+            else
+                return insert_(pos.const_cast_(), value);
+        }
 
         /**
          * @brief Inserts the given value into deque before specified iterator
@@ -579,7 +647,10 @@ namespace opendsa
          * @param pos  A const_iterator into the deque
          * @param value RValue to be inserted.
          */
-        iterator insert(const_iterator pos, value_type &&value) {}
+        iterator insert(const_iterator pos, value_type &&value)
+        {
+            return emplace(pos, std::move(value));
+        }
 
         /**
          * @brief Inserts count copies of value into the deque before the pos
@@ -640,14 +711,32 @@ namespace opendsa
          *
          * @param value Data to be added
          */
-        void push_back(const_reference value) {}
+        void push_back(const_reference value)
+        {
+            // Check if there is still space for new element
+            if (finish_ptr_.current_ != finish_ptr_.last_ - 1)
+            {
+                // std::allocator<T>::construct is marked as deprecated in c++17
+                // and removed in c++20, so we use allocator_traits
+                std::allocator<T> alloc;
+                using traits_t = std::allocator_traits<decltype(alloc)>;
+
+                traits_t::construct(alloc, finish_ptr_.current_, value);
+
+                ++finish_ptr_.current_;
+            }
+            else
+            {
+                push_back_(value);
+            }
+        }
 
         /**
          * @brief Add data to the end of the deque
          *
          * @param value Data to be added
          */
-        void push_back(T &&value) {}
+        void push_back(T &&value) { emplace_back(std::move(value)); }
 
         /**
          * @brief Removes the last element
@@ -659,14 +748,32 @@ namespace opendsa
          *
          * @param value Data to be added
          */
-        void push_front(const_reference value) {}
+        void push_front(const_reference value)
+        {
+            // Check if there is still space for new element
+            if (start_ptr_.current_ != start_ptr_.first_)
+            {
+                // std::allocator<T>::construct is marked as deprecated in c++17
+                // and removed in c++20, so we use allocator_traits
+                std::allocator<T> alloc;
+                using traits_t = std::allocator_traits<decltype(alloc)>;
+
+                traits_t::construct(alloc, start_ptr_.current_ - 1, value);
+
+                --start_ptr_.current_;
+            }
+            else
+            {
+                push_front_(value);
+            }
+        }
 
         /**
          * @brief Add data to the begin of the deque
          *
          * @param value Data to be added
          */
-        void push_front(T &&value) {}
+        void push_front(T &&value) { emplace_front(std::move(value)); }
 
         /**
          * @brief Removes the first element
@@ -793,6 +900,41 @@ namespace opendsa
 
             traits_t::construct(alloc, start_ptr_.current_,
                                 std::forward<Args>(args)...);
+        }
+
+        template <typename... Args>
+        iterator insert_(iterator pos, Args &&...args)
+        {
+            value_type      insert_value(std::forward<Args>(args)...);
+            difference_type index = pos - start_ptr_;
+
+            // Shift the values to give space to insert the new value
+            if (static_cast<size_type>(index) < size() / 2)
+            {
+                push_front(std::move(front()));
+                iterator front1 = start_ptr_;
+                ++front1;
+                iterator front2 = front1;
+                ++front2;
+                pos           = start_ptr_ + index;
+                iterator pos1 = pos;
+                ++pos1;
+
+                std::move(front2, pos1, front1);
+            }
+            else
+            {
+                push_back(std::move(back()));
+                iterator back1 = finish_ptr_;
+                --back1;
+                iterator back2 = back1;
+                --back2;
+                pos = start_ptr_ + index;
+                std::move(pos, back2, back1);
+            }
+
+            *pos = std::move(insert_value);
+            return pos;
         }
     };
 
