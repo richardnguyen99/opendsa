@@ -52,7 +52,7 @@ Although I have no guarantee nor support for you to use IRL, every suggestion or
   - [X] Dynamic array
   - [ ] Stack
   - [ ] Queue
-  - [ ] Dequeue
+  - [X] Deque
   - [ ] Linked list
     - [ ] Doubly-linked list
     - [ ] Singly-linked list

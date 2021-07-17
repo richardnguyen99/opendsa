@@ -361,7 +361,32 @@ namespace opendsa
          *
          * @param other another container to se as data source
          */
-        deque &operator=(deque &&other) noexcept {}
+        deque &operator=(deque &&other) noexcept
+        {
+            if (std::addressof(other) != this)
+            {
+                if (size() >= other.size())
+                {
+                    // Copy the content from range to the new start pointer
+                    auto cursor
+                        = std::copy(other.begin(), other.end(), start_ptr_);
+
+                    // Erase elements in the old pointers
+                    erase_at_end_(cursor);
+                }
+                else
+                {
+                    const_iterator mid
+                        = other.begin() + difference_type(size());
+                    std::copy(other.begin(), mid, start_ptr_);
+                    range_insert_(finish_ptr_, mid, other.end());
+                }
+            }
+
+            other.clear();
+
+            return *this;
+        }
 
         /**
          * @brief Replaces the contents with the contents of the intializer list
@@ -369,7 +394,10 @@ namespace opendsa
          *
          * @param init Intializer list
          */
-        deque &operator=(std::initializer_list<T> init) {}
+        deque &operator=(std::initializer_list<T> init)
+        {
+            assign_(std::begin(init), std::end(init));
+        }
 
         /**
          * @brief Replaces the contents with count copies of value
@@ -377,7 +405,10 @@ namespace opendsa
          * @param count new size of the container
          * @param value intial value of elements
          */
-        void assign(size_type count, const_reference value) {}
+        void assign(size_type count, const_reference value)
+        {
+            fill_assign_(count, value);
+        }
 
         /**
          * @brief Replaces the contents with copies in the range.
@@ -386,9 +417,11 @@ namespace opendsa
          * @param first An input Iterator for the start of range
          * @param last An input Iterator for the end of range
          */
-        template <class InputIterator>
+        template <typename InputIterator,
+                  typename = std::_RequireInputIter<InputIterator>>
         void assign(InputIterator first, InputIterator last)
         {
+            assign_(first, last);
         }
 
         /**
@@ -397,7 +430,10 @@ namespace opendsa
          *
          * @param init Intializer list
          */
-        void assign(std::initializer_list<T> init) {}
+        void assign(std::initializer_list<T> init)
+        {
+            assign_(init.begin(), init.end());
+        }
 
         // Iterators ===
         /**
@@ -904,6 +940,43 @@ namespace opendsa
                                       value);
         }
 
+        void fill_insert_(iterator pos, size_type number,
+                          const value_type &value)
+        {
+            if (pos.current_ == start_ptr_.current_)
+            {
+                new_elements_at_front_(number);
+                iterator new_start_ptr = start_ptr_ - number;
+
+                std::uninitialized_fill(new_start_ptr, start_ptr_, value);
+                start_ptr_ = new_start_ptr;
+            }
+            else if (pos.current_ == finish_ptr_.current_)
+            {
+                new_elements_at_back_(number);
+                iterator new_finish_ptr = finish_ptr_ + number;
+
+                std::uninitialized_fill(finish_ptr_, new_finish_ptr, value);
+                finish_ptr_ = new_finish_ptr;
+            }
+            else
+                range_insert_(pos, number, value);
+        }
+
+        void fill_assign_(size_type number, const value_type &value)
+        {
+            if (number > size())
+            {
+                std::fill(begin(), end(), value);
+                fill_insert_(end(), number - size(), value);
+            }
+            else
+            {
+                erase_at_end_(begin() + difference_type(number));
+                std::fill(begin(), end(), value);
+            }
+        }
+
         /**
          * @brief Fill the container with the contents of range.
          *
@@ -984,6 +1057,22 @@ namespace opendsa
 
             *pos = std::move(insert_value);
             return pos;
+        }
+
+        template <typename ForwardIterator>
+        void assign_(ForwardIterator first, ForwardIterator last)
+        {
+            const size_type dist = std::distance(first, last);
+
+            if (dist > size())
+            {
+                ForwardIterator mid = first;
+                std::advance(mid, size());
+                std::copy(first, mid, begin());
+                range_insert_(end(), mid, last);
+            }
+            else
+                erase_at_end_(std::copy(first, last, begin()));
         }
 
         template <typename ForwardIterator>
@@ -1102,6 +1191,69 @@ namespace opendsa
             }
             else
                 insert_range_(pos, first, last, dist);
+        }
+
+        void range_insert_(iterator pos, size_type number,
+                           const value_type &value)
+        {
+            const difference_type front_elements = pos - start_ptr_;
+            value_type            copied_value   = value;
+
+            if (front_elements < difference_type(size() / 2))
+            {
+                new_elements_at_front_(number);
+                iterator new_start_ptr = start_ptr_ - number;
+                iterator old_start_ptr = start_ptr_;
+                pos                    = start_ptr_ + front_elements;
+
+                if (front_elements >= difference_type(number))
+                {
+                    iterator n_start_ptr
+                        = (start_ptr_ + difference_type(number));
+                    std::uninitialized_move(start_ptr_, n_start_ptr,
+                                            new_start_ptr);
+                    start_ptr_ = new_start_ptr;
+                    std::move(n_start_ptr, pos, old_start_ptr);
+                    std::fill(pos - difference_type(number), pos, copied_value);
+                }
+                else
+                {
+                    std::uninitialized_fill(
+                        std::uninitialized_move(start_ptr_, pos, new_start_ptr),
+                        start_ptr_, copied_value);
+                    start_ptr_ = new_start_ptr;
+                    std::fill(old_start_ptr, pos, copied_value);
+                }
+            }
+            else
+            {
+                new_elements_at_back_(number);
+                iterator              new_finish_ptr = finish_ptr_ + number;
+                iterator              old_finish_ptr = finish_ptr_;
+                const difference_type back_elements
+                    = difference_type(size()) - front_elements;
+
+                if (back_elements > difference_type(number))
+                {
+                    iterator n_finish_ptr
+                        = (finish_ptr_ - difference_type(number));
+                    std::uninitialized_move(n_finish_ptr, finish_ptr_,
+                                            finish_ptr_);
+                    finish_ptr_ = n_finish_ptr;
+                    std::move(pos, n_finish_ptr, old_finish_ptr);
+                    std::fill(pos, pos + difference_type(number), copied_value);
+                }
+                else
+                {
+                    std::uninitialized_fill(finish_ptr_,
+                                            pos + difference_type(number),
+                                            copied_value);
+                    std::uninitialized_move(pos, finish_ptr_,
+                                            pos + difference_type(number));
+                    finish_ptr_ = new_finish_ptr;
+                    std::fill(pos, old_finish_ptr, copied_value);
+                }
+            }
         }
 
         void new_elements_at_front_(size_type new_elements)
