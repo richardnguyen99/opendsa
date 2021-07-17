@@ -26,6 +26,7 @@
 #include <iostream>
 #include <memory>
 #include <optional>
+#include <type_traits>
 
 namespace opendsa
 {
@@ -305,7 +306,7 @@ namespace opendsa
          *
          * @param other Other rvalue-reference
          */
-        deque(deque &&other) : deque(std::move(other)) {}
+        deque(deque &&other) = default;
 
         /**
          * @brief Constructs the container with contents of the initializer list
@@ -363,25 +364,9 @@ namespace opendsa
          */
         deque &operator=(deque &&other) noexcept
         {
-            if (std::addressof(other) != this)
-            {
-                if (size() >= other.size())
-                {
-                    // Copy the content from range to the new start pointer
-                    auto cursor
-                        = std::copy(other.begin(), other.end(), start_ptr_);
-
-                    // Erase elements in the old pointers
-                    erase_at_end_(cursor);
-                }
-                else
-                {
-                    const_iterator mid
-                        = other.begin() + difference_type(size());
-                    std::copy(other.begin(), mid, start_ptr_);
-                    range_insert_(finish_ptr_, mid, other.end());
-                }
-            }
+            std::swap(map_, other.map_);
+            std::swap(start_ptr_, other.start_ptr_);
+            std::swap(finish_ptr_, other.finish_ptr_);
 
             other.clear();
 
@@ -908,7 +893,12 @@ namespace opendsa
          *
          * @param other Another deque with the same element type
          */
-        void swap(deque &other) noexcept {}
+        void swap(deque &other) noexcept
+        {
+            std::swap(map_, other.map_);
+            std::swap(start_ptr_, other.start_ptr_);
+            std::swap(finish_ptr_, other.finish_ptr_);
+        }
 
     protected:
         void range_check_(size_type count) const {}
@@ -1398,6 +1388,14 @@ namespace opendsa
                 }
                 return begin() + front_elements;
             }
+        }
+
+        template <typename TT>
+        void move_assign_(deque &&other, TT)
+        {
+            std::swap(*this, other);
+            other.clear();
+            map_ = std::move(other.map_);
         }
     };
 
