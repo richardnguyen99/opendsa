@@ -20,8 +20,10 @@
 
 #pragma once
 
+#include <algorithm>
 #include <cstddef>
 #include <initializer_list>
+#include <iostream>
 #include <memory>
 #include <optional>
 
@@ -204,6 +206,18 @@ namespace opendsa
                        * (x.node_ - y.node_ - int(x.node_ != 0))
                    + (x.current_ - x.first_) + (y.last_ - y.current_);
         }
+
+        friend bool operator==(const deque_iterator &a,
+                               const deque_iterator &b) noexcept
+        {
+            return a.current_ == b.current_;
+        }
+
+        friend bool operator!=(const deque_iterator &a,
+                               const deque_iterator &b) noexcept
+        {
+            return !(b == a);
+        }
     };
 
     /**
@@ -270,6 +284,8 @@ namespace opendsa
                   typename = std::_RequireInputIter<InputIterator>>
         explicit deque(InputIterator first, InputIterator last)
         {
+            initialize_map_(0);
+            range_initialize_(first, last, std::input_iterator_tag());
         }
 
         /**
@@ -278,7 +294,10 @@ namespace opendsa
          *
          * @param other Other opendsa::deque
          */
-        deque(const deque &other) {}
+        deque(const deque &other)
+        {
+            std::uninitialized_copy(other.begin(), other.end(), start_ptr_);
+        }
 
         /**
          * @brief Move constructor. Constructs the container with the contents
@@ -286,20 +305,24 @@ namespace opendsa
          *
          * @param other Other rvalue-reference
          */
-        deque(deque &&other) {}
+        deque(deque &&other) : deque(std::move(other)) {}
 
         /**
          * @brief Constructs the container with contents of the initializer list
-         * init
          *
          * @param init Initializer list
          */
-        deque(std::initializer_list<T> init) {}
+        deque(std::initializer_list<T> init)
+        {
+            initialize_map_(0);
+            range_initialize_(init.begin(), init.end(),
+                              std::random_access_iterator_tag());
+        }
 
         /**
          * @brief Destroy the deque object
          */
-        ~deque() {}
+        ~deque() { destroy_data_(begin(), end()); }
 
         /**
          * @brief Copy assignment operator. Replaces the contents with a copy of
@@ -307,7 +330,30 @@ namespace opendsa
          *
          * @param other another container to use as data source
          */
-        deque &operator=(const deque &other) {}
+        deque &operator=(const deque &other)
+        {
+            if (std::addressof(other) != this)
+            {
+                if (size() >= other.size())
+                {
+                    // Copy the content from range to the new start pointer
+                    auto cursor
+                        = std::copy(other.begin(), other.end(), start_ptr_);
+
+                    // Erase elements in the old pointers
+                    erase_at_end_(cursor);
+                }
+                else
+                {
+                    const_iterator mid
+                        = other.begin() + difference_type(size());
+                    std::copy(other.begin(), mid, start_ptr_);
+                    range_insert_(finish_ptr_, mid, other.end());
+                }
+            }
+
+            return *this;
+        }
 
         /**
          * @brief Move assignment operator. Replaces the contents with the
@@ -514,7 +560,7 @@ namespace opendsa
          *
          * It will check if the begin() iterator is equal to the end() iterator.
          */
-        bool empty() const noexcept {}
+        bool empty() const noexcept { return finish_ptr_ == start_ptr_; }
 
         /**
          * @brief Returns the number of elements in the container
@@ -522,7 +568,7 @@ namespace opendsa
          * It will compute the distance between the begin() iterator and the
          * end() iterator using std::distance
          */
-        size_type size() const noexcept {}
+        size_type size() const noexcept { return finish_ptr_ - start_ptr_; }
 
         // Modifiers ===
         /**
@@ -532,7 +578,7 @@ namespace opendsa
          * to zero, invalidates any references, pointers and iterators referring
          * to contained elements.
          */
-        void clear() noexcept {}
+        void clear() noexcept { erase_at_end_(begin()); }
 
         /**
          * @brief Push an in-place constructed object before pos
@@ -787,7 +833,6 @@ namespace opendsa
          */
         void swap(deque &other) noexcept {}
 
-        // Non-member functions ===
     protected:
         void range_check_(size_type count) const {}
 
@@ -867,8 +912,12 @@ namespace opendsa
          */
         template <typename InputIter>
         void range_initialize_(InputIter first, InputIter last,
-                               std::forward_iterator_tag)
+                               std::input_iterator_tag)
         {
+            for (; first != last; ++first)
+            {
+                emplace_back(*first);
+            }
         }
 
         template <typename... Args>
@@ -936,6 +985,159 @@ namespace opendsa
             *pos = std::move(insert_value);
             return pos;
         }
+
+        template <typename ForwardIterator>
+        void insert_range_(iterator pos, ForwardIterator first,
+                           ForwardIterator last, size_type n)
+        {
+            const difference_type front_elements = pos - start_ptr_;
+
+            if (static_cast<size_type>(front_elements) < size() / 2)
+            {
+                new_elements_at_front_(n);
+                auto     new_start = start_ptr_ - n;
+                iterator old_start = start_ptr_;
+                pos                = start_ptr_ + front_elements;
+
+                if (front_elements >= difference_type(n))
+                {
+                    iterator n_start_ptr = (start_ptr_ + difference_type(n));
+                    std::uninitialized_move(start_ptr_, n_start_ptr, new_start);
+                    start_ptr_ = new_start;
+                    std::move(n_start_ptr, pos, old_start);
+                    std::copy(first, last, pos - difference_type(n));
+                }
+                else
+                {
+                    ForwardIterator mid = first;
+                    std::advance(mid, difference_type(n) - front_elements);
+                    auto tmp
+                        = std::uninitialized_move(start_ptr_, pos, new_start);
+                    std::uninitialized_copy(first, mid, tmp);
+                    start_ptr_ = new_start;
+                    std::copy(mid, last, old_start);
+                }
+            }
+            else
+            {
+                new_elements_at_back_(n);
+                auto new_finish = finish_ptr_ + n;
+
+                iterator old_finish = finish_ptr_;
+
+                const difference_type back_elements = size() - front_elements;
+                pos = finish_ptr_ - back_elements;
+
+                if (back_elements > difference_type(n))
+                {
+                    iterator n_finish_ptr = (finish_ptr_ - difference_type(n));
+                    std::uninitialized_move(n_finish_ptr, finish_ptr_,
+                                            finish_ptr_);
+                    finish_ptr_ = new_finish;
+                    std::move(pos, n_finish_ptr, old_finish);
+                    std::copy(first, last, pos);
+                }
+                else
+                {
+                    ForwardIterator mid = first;
+                    std::advance(mid, back_elements);
+                    auto tmp = std::uninitialized_copy(mid, last, finish_ptr_);
+                    std::uninitialized_move(pos, finish_ptr_, tmp);
+                    finish_ptr_ = new_finish;
+                    std::copy(first, mid, pos);
+                }
+            }
+        }
+
+        void destroy_data_(iterator first, iterator last)
+        {
+            // Destroy nodes with full elements
+            for (auto node = first.node_ + 1; node < last.node_; ++node)
+            {
+                std::destroy((*node).get(), (*node).get() + buffer_size());
+            }
+
+            // Destroy ends
+            if (first.node_ != last.node_)
+            {
+                std::destroy(first.current_, first.last_);
+                std::destroy(last.first_, last.current_);
+            }
+            else
+                std::destroy(first.current_, last.current_);
+        }
+
+        void destroy_nodes_(std::unique_ptr<std::remove_cv_t<T>[]> *start,
+                            std::unique_ptr<std::remove_cv_t<T>[]> *finish)
+        {
+            for (auto n = start; n < finish; ++n)
+                *n = nullptr;
+        }
+
+        void erase_at_end_(iterator pos)
+        {
+            destroy_data_(pos, end());
+            destroy_nodes_(pos.node_ + 1, finish_ptr_.node_ + 1);
+            finish_ptr_ = pos;
+        }
+
+        template <typename Iter>
+        void range_insert_(iterator pos, Iter first, Iter last)
+        {
+            const size_type dist = std::distance(first, last);
+
+            if (pos.current_ == start_ptr_.current_)
+            {
+                new_elements_at_front_(dist);
+                auto new_start_ptr = start_ptr_ - dist;
+                std::uninitialized_copy(first, last, new_start_ptr);
+                start_ptr_ = new_start_ptr;
+            }
+            else if (pos.current_ == finish_ptr_.current_)
+            {
+                new_elements_at_back_(dist);
+                auto new_finish_ptr = finish_ptr_ + dist;
+                std::uninitialized_copy(first, last, finish_ptr_);
+                finish_ptr_ = new_finish_ptr;
+            }
+            else
+                insert_range_(pos, first, last, dist);
+        }
+
+        void new_elements_at_front_(size_type new_elements)
+        {
+            const size_type new_nodes
+                = ((new_elements + buffer_size() - 1) / buffer_size());
+
+            for (size_type i = 1; i <= new_nodes; ++i)
+            {
+                *(start_ptr_.node_ - i) = std::make_unique<T[]>(buffer_size());
+            }
+        }
+
+        void new_elements_at_back_(size_type new_elements)
+        {
+            const size_type new_nodes
+                = ((new_elements + buffer_size() - 1) / buffer_size());
+
+            for (size_type i = 1; i <= new_nodes; i++)
+            {
+                *(finish_ptr_.node_ + i) = std::make_unique<T[]>(buffer_size());
+            }
+        }
     };
 
+    // Non-member functions ===
+    template <typename T>
+    inline bool operator==(const deque<T> &a, const deque<T> &b)
+    {
+        return a.size() == b.size()
+               && std::equal(a.begin(), a.end(), b.begin());
+    }
+
+    template <typename T>
+    inline bool operator!=(const deque<T> &a, const deque<T> &b)
+    {
+        return !(a == b);
+    }
 } // namespace opendsa
