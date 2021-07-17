@@ -745,6 +745,9 @@ namespace opendsa
         iterator insert(const_iterator pos, size_type count,
                         const_reference value)
         {
+            auto offset = pos - cbegin();
+            fill_insert_(pos.const_cast_(), count, value);
+            return begin() + offset;
         }
 
         /**
@@ -756,10 +759,14 @@ namespace opendsa
          * @param first An input iterator as the beginning of the range
          * @param last An input iterator as the ending of the range
          */
-        template <class InputIterator>
-        iterator insert(const_pointer pos, InputIterator first,
+        template <typename InputIterator,
+                  typename = std::_RequireInputIter<InputIterator>>
+        iterator insert(const_iterator pos, InputIterator first,
                         InputIterator last)
         {
+            difference_type offset = pos - cbegin();
+            range_insert_(pos.const_cast_(), first, last);
+            return begin() + offset;
         }
 
         /**
@@ -771,6 +778,9 @@ namespace opendsa
         iterator insert(const_iterator                    pos,
                         std::initializer_list<value_type> init)
         {
+            auto offset = pos - cbegin();
+            range_insert_(pos.const_cast_(), init.begin(), init.end());
+            return begin() + offset;
         }
 
         /**
