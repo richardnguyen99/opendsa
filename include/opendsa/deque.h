@@ -788,7 +788,7 @@ namespace opendsa
          *
          * @param pos  Iterator pointing to the element to be erased
          */
-        iterator erase(const_iterator pos) {}
+        iterator erase(const_iterator pos) { return erase_(pos.const_cast_()); }
 
         /**
          * @brief Remove a range of elements
@@ -796,7 +796,10 @@ namespace opendsa
          * @param first Iterator pointing the first element to be erased
          * @param last Iterator pointing the last element to be erased
          */
-        iterator erase(const_iterator first, const_iterator last) {}
+        iterator erase(const_iterator first, const_iterator last)
+        {
+            return erase_range_(first.const_cast_(), last.const_cast_());
+        }
 
         /**
          * @brief Add data to the end of the deque
@@ -833,7 +836,21 @@ namespace opendsa
         /**
          * @brief Removes the last element
          */
-        void pop_back() noexcept {}
+        void pop_back() noexcept
+        {
+            if (empty())
+                return;
+
+            if (finish_ptr_.current_ != finish_ptr_.first_)
+            {
+                --finish_ptr_.current_;
+                std::allocator<T> alloc;
+                using traits_t = std::allocator_traits<decltype(alloc)>;
+                traits_t::destroy(alloc, finish_ptr_.current_);
+            }
+            else
+                pop_back_();
+        }
 
         /**
          * @brief Add data to the begin of the deque
@@ -870,7 +887,21 @@ namespace opendsa
         /**
          * @brief Removes the first element
          */
-        void pop_front() noexcept {}
+        void pop_front() noexcept
+        {
+            if (empty())
+                return;
+
+            if (start_ptr_.current_ != start_ptr_.last_ - 1)
+            {
+                std::allocator<T> alloc;
+                using traits_t = std::allocator_traits<decltype(alloc)>;
+                traits_t::destroy(alloc, start_ptr_.current_);
+                ++start_ptr_.current_;
+            }
+            else
+                pop_front_();
+        }
 
         /**
          * @brief Swaps data with another deque
@@ -1180,6 +1211,35 @@ namespace opendsa
             finish_ptr_ = pos;
         }
 
+        void erase_at_begin_(iterator pos)
+        {
+            destroy_data_(begin(), pos);
+            destroy_nodes_(start_ptr_.node_, pos.node_);
+            start_ptr_ = pos;
+        }
+
+        iterator erase_(iterator pos)
+        {
+            iterator              next  = std::next(pos);
+            const difference_type index = pos - begin();
+
+            if (static_cast<size_type>(index) < (size() >> 1))
+            {
+                if (pos != begin())
+                    std::move_backward(begin(), pos, next);
+
+                pop_front();
+            }
+            else
+            {
+                if (next != end())
+                    std::move(next, end(), pos);
+
+                pop_back();
+            }
+            return begin() + index;
+        }
+
         template <typename Iter>
         void range_insert_(iterator pos, Iter first, Iter last)
         {
@@ -1285,6 +1345,58 @@ namespace opendsa
             for (size_type i = 1; i <= new_nodes; i++)
             {
                 *(finish_ptr_.node_ + i) = std::make_unique<T[]>(buffer_size());
+            }
+        }
+
+        void pop_front_()
+        {
+            std::allocator<T> alloc;
+            using traits_t = std::allocator_traits<decltype(alloc)>;
+            traits_t::destroy(alloc, start_ptr_.current_);
+            traits_t::deallocate(alloc, start_ptr_.first_, buffer_size());
+            start_ptr_.set_node_(start_ptr_.node_ + 1);
+            start_ptr_.current_ = start_ptr_.first_;
+        }
+
+        void pop_back_()
+        {
+            std::allocator<T> alloc;
+            using traits_t = std::allocator_traits<decltype(alloc)>;
+            traits_t::deallocate(alloc, finish_ptr_.first_, buffer_size());
+            finish_ptr_.set_node_(finish_ptr_.node_ - 1);
+            finish_ptr_.current_ = finish_ptr_.last_ - 1;
+            traits_t::destroy(alloc, finish_ptr_.current_);
+        }
+
+        iterator erase_range_(iterator first, iterator last)
+        {
+            if (first == last)
+                return first;
+            else if (first == begin() && last == end())
+            {
+                clear();
+                return end();
+            }
+            else
+            {
+                const difference_type number         = last - first;
+                const difference_type front_elements = first - begin();
+                if (static_cast<size_type>(front_elements)
+                    <= (size() - number) / 2)
+                {
+                    if (first != begin())
+                        std::move_backward(begin(), first, last);
+
+                    erase_at_begin_(begin() + number);
+                }
+                else
+                {
+                    if (last != end())
+                        std::move_backward(last, end(), first);
+
+                    erase_at_end_(end() - number);
+                }
+                return begin() + front_elements;
             }
         }
     };
