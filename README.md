@@ -55,9 +55,9 @@ Although I have no guarantee nor support for you to use IRL, every suggestion or
   - [ ] Stack
   - [ ] Queue
   - [X] Deque
-  - [ ] Linked list
+  - [X] Linked list
     - [ ] Doubly-linked list
-    - [ ] Singly-linked list
+    - [X] Singly-linked list
     - [ ] Reverse a linked list
     - [ ] Insertion
     - [ ] Deletion

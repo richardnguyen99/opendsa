@@ -57,7 +57,7 @@ namespace opendsa
         T                                    data_;
     };
 
-    template <typename T>
+    template <typename T, typename U = std::remove_cv_t<T>>
     struct singly_node_iterator
     {
         using value_type        = T;
@@ -68,12 +68,17 @@ namespace opendsa
         using iterator_category = std::forward_iterator_tag;
         using self              = singly_node_iterator<T>;
 
-        singly_node_base<T> *node_ptr_;
+        singly_node_base<U> *node_ptr_;
 
         singly_node_iterator() : node_ptr_(nullptr) {}
 
-        singly_node_iterator(singly_node_base<T> *node_ptr)
+        singly_node_iterator(singly_node_base<U> *node_ptr)
             : node_ptr_(node_ptr)
+        {
+        }
+
+        singly_node_iterator(const singly_node_iterator<U> &iterator) noexcept
+            : node_ptr_(iterator.node_ptr_)
         {
         }
 
@@ -155,7 +160,10 @@ namespace opendsa
          *
          * @param other Another singly-linked list
          */
-        singly_linked_list(const singly_linked_list &other) {}
+        singly_linked_list(const singly_linked_list &other)
+        {
+            range_initialize_(other.begin(), other.end());
+        }
 
         /**
          * @brief Move constructor. Constructs the container with the contents
@@ -163,7 +171,7 @@ namespace opendsa
          *
          * @param other RRvalue singly-linked list
          */
-        singly_linked_list(singly_linked_list &&other) {}
+        singly_linked_list(singly_linked_list &&other) = default;
 
         /**
          * @brief Construct a new singly linked list object
@@ -188,27 +196,131 @@ namespace opendsa
             range_initialize_(first, last);
         }
 
+        /**
+         * @brief
+         *
+         * @param list
+         * @return singly_linked_list&
+         */
+        singly_linked_list &operator=(const singly_linked_list &list)
+        {
+            if (std::addressof(list) != this)
+            {
+            }
+        }
+
+        singly_linked_list &operator=(singly_linked_list &&list) noexcept {}
+
+        singly_linked_list &operator=(std::initializer_list<T> list) {}
+
+        /**
+         * @brief Iterator to the first element
+         */
         iterator begin() noexcept { return iterator(head_.get()); }
 
+        /**
+         * @brief Read-only iterator to the first element
+         */
         const_iterator begin() const noexcept
         {
             return const_iterator(head_.get());
         }
 
+        /**
+         * @brief Read-only iterator to the first element
+         */
         const_iterator cbegin() const noexcept
         {
             return const_iterator(head_.get());
         }
 
+        /**
+         * @brief Iterator to the end of the container (Not the last element)
+         */
         iterator end() noexcept { return iterator(nullptr); }
 
+        /**
+         * @brief Read-only iterator to the end of the container (Not the last
+         * element)
+         */
         const_iterator end() const noexcept { return const_iterator(nullptr); }
 
+        /**
+         * @brief Read-only iterator to the end of the container (Not the last
+         * element)
+         */
         const_iterator cend() const noexcept { return const_iterator(nullptr); }
+
+        /**
+         * @brief Insert value after the iterator
+         *
+         * @param pos iterator after which the content will be inserted
+         * @param value value to insert
+         */
+        iterator insert_after(const_iterator pos, const T &value)
+        {
+            insert_after_(pos, value);
+        }
+
+        /**
+         * @brief Insert value after the iterator
+         *
+         * @param pos iterator after which the content will be inserted
+         * @param value value to insert
+         */
+        iterator insert_after(const_iterator pos, T &&value)
+        {
+            insert_after_(pos, std::move(value));
+        }
+
+        /**
+         * @brief Insert count copies of the value after the pos iterator
+         *
+         * @param pos iterator after which the contents will be inserted
+         * @param count number of copies to insert
+         * @param value values to insert
+         */
+        iterator insert_after(const_iterator pos, size_type count,
+                              const T &value)
+        {
+            insert_range_after_(pos, count, value);
+        }
+
+        /**
+         * @brief Insert elements from the range after the pos iterator. Cannot
+         * use this on its own.
+         *
+         * @param pos iterator after which the contents will be inserted
+         * @param first Iterator to the beginning of the range
+         * @param last  Iteraotr to the end of the range
+         */
+        template <typename InputIterator,
+                  typename = std::_RequireInputIter<InputIterator>>
+        iterator insert_after(const_iterator pos, InputIterator first,
+                              InputIterator last)
+        {
+            insert_range_after_(pos, first, last);
+        }
+
+        /**
+         * @brief Insert elements from the contents of initializer list.
+         *
+         * @param pos iterator after which the contents will be inserted
+         * @param list Initializer list to insert values from.
+         * @return iterator
+         */
+        iterator insert_after(const_iterator pos, std::initializer_list<T> list)
+        {
+            insert_range_after_(pos, list.begin(), list.end());
+        }
+
+        void push_back(const T &value) { push_back_(value); }
 
     private:
         std::unique_ptr<singly_node_base<T>> head_ = nullptr;
         singly_node_base<T> *                tail_ = nullptr;
+
+        template <typename... Args>
 
         void push_back_(const T &d)
         {
@@ -254,6 +366,46 @@ namespace opendsa
             for (size_type i = 0; i < count; ++i)
             {
                 push_back_(value);
+            }
+        }
+
+        template <typename... Args>
+        singly_node_base<T> *insert_after_(const_iterator pos, Args &&...args)
+        {
+            auto new_node = std::make_unique<singly_node_base<T>>(
+                std::forward<Args>(args)...);
+
+            new_node->next_ptr_      = std::move(pos.node_ptr_->next_ptr_);
+            pos.node_ptr_->next_ptr_ = std::move(new_node);
+
+            if (pos++ == cend())
+            {
+                tail_ = pos.node_ptr_->next_ptr_.get();
+            }
+
+            return pos.node_ptr_;
+        }
+
+        singly_node_base<T> *
+        insert_range_after_(const_iterator pos, size_type count, const T &value)
+        {
+            for (size_type i = 0; i < count; ++i, ++pos)
+            {
+                insert_after_(pos, value);
+            }
+
+            return pos.node_ptr_;
+        }
+
+        template <typename InputIterator,
+                  typename = std::_RequireInputIter<InputIterator>>
+        singly_node_base<T> *insert_range_after_(const_iterator pos,
+                                                 InputIterator  first,
+                                                 InputIterator  last)
+        {
+            for (; first != last; ++first, ++pos)
+            {
+                insert_after_(pos, *first);
             }
         }
     };
