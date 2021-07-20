@@ -45,6 +45,8 @@ This repository is solely for my learning purposes and is what I want to share w
 
 Although I have no guarantee nor support for you to use IRL, every suggestion or found bug is appreciated to make the project error-free. Just make a pull request to change what you think need to be changed.
 
+:tada: _Check the Notion page to know what's next!_
+
 # Features
 
 - Data structures:

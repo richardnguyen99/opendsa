@@ -1412,4 +1412,15 @@ namespace opendsa
     {
         return !(a == b);
     }
+
+    template <typename T>
+    inline std::ostream &operator<<(std::ostream &out, const deque<T> d)
+    {
+        out << "{ ";
+        for (auto &e : d)
+        {
+            out << e << " " << std::endl;
+        }
+        out << "}";
+    }
 } // namespace opendsa
