@@ -419,6 +419,16 @@ namespace opendsa
 
         // === Begin OPERATIONS
 
+        void swap(singly_linked_list<T> &ll) noexcept
+        {
+            // singly_node_base<T> *tmp_tail
+            // = static_cast<singly_node_base<T> *>(tail_);
+            // tail_    = ll.tail_;
+            // ll.tail_ = tmp_tail;
+
+            head_.swap(ll.head_);
+        }
+
         // === End OPERATIONS
 
     private:
