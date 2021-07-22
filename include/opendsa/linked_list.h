@@ -42,6 +42,7 @@ namespace opendsa
         {
             next_ptr_ = std::move(node.next_ptr_);
             data_     = node.data_;
+            node      = nullptr;
             return *this;
         }
 
@@ -123,8 +124,8 @@ namespace opendsa
     class singly_linked_list
     {
     public:
-        using alloc_   = std::allocator<T>;
-        using traits_t = std::allocator_traits<alloc_>;
+        using Alloc_   = std::allocator<T>;
+        using traits_t = std::allocator_traits<Alloc_>;
 
         using value_type      = T;
         using pointer         = typename traits_t::const_pointer;
@@ -136,6 +137,8 @@ namespace opendsa
 
         using iterator       = singly_node_iterator<T>;
         using const_iterator = singly_node_iterator<const T>;
+
+        // === Begin MEMBERS
 
         /**
          * @brief Default cosntructor. Constructs an empty container
@@ -213,6 +216,36 @@ namespace opendsa
 
         singly_linked_list &operator=(std::initializer_list<T> list) {}
 
+        ~singly_linked_list()
+        {
+            for (std::unique_ptr<singly_node_base<T>> current
+                 = std::move(head_);
+                 current != nullptr; current = std::move(current->next_ptr_))
+                ;
+        }
+        // === End MEMBERS
+
+        // === Begin ACCESS
+
+        /**
+         * @brief Returns a reference to the first element in the container
+         *
+         * The expression `front() is equivalent to `*begin()`.
+         */
+        reference front() { return *head_.get(); }
+
+        /**
+         * @brief Returns a read-only reference to the first element in the
+         * container
+         *
+         * The expression `front() is equivalent to `*begin()`.
+         */
+        const_reference front() const { return *head_.get(); }
+
+        // === End ACCESS
+
+        // === Begin ITERATORS
+
         /**
          * @brief Iterator to the first element
          */
@@ -251,6 +284,24 @@ namespace opendsa
          */
         const_iterator cend() const noexcept { return const_iterator(nullptr); }
 
+        // === End ITERATORS
+
+        // == Begin MODIFIERS
+
+        /**
+         * @brief Inserts a  new in-place constructed element after the
+         * specified postion in the container.
+         *
+         * @param pos Iterator after which the new element will be constructed.
+         * @param args List of arguments to forward to the constructor of the
+         * element.
+         */
+        template <typename... Args>
+        iterator emplace_after(const_iterator pos, Args &&...args)
+        {
+            return iterator(insert_after_(pos, std::forward<Args>(args)...));
+        }
+
         /**
          * @brief Insert value after the iterator
          *
@@ -259,7 +310,7 @@ namespace opendsa
          */
         iterator insert_after(const_iterator pos, const T &value)
         {
-            insert_after_(pos, value);
+            return iterator(insert_after_(pos, value));
         }
 
         /**
@@ -270,7 +321,7 @@ namespace opendsa
          */
         iterator insert_after(const_iterator pos, T &&value)
         {
-            insert_after_(pos, std::move(value));
+            return iterator(insert_after_(pos, std::move(value)));
         }
 
         /**
@@ -283,7 +334,7 @@ namespace opendsa
         iterator insert_after(const_iterator pos, size_type count,
                               const T &value)
         {
-            insert_range_after_(pos, count, value);
+            return iterator(insert_range_after_(pos, count, value));
         }
 
         /**
@@ -299,7 +350,7 @@ namespace opendsa
         iterator insert_after(const_iterator pos, InputIterator first,
                               InputIterator last)
         {
-            insert_range_after_(pos, first, last);
+            return iterator(insert_range_after_(pos, first, last));
         }
 
         /**
@@ -311,41 +362,101 @@ namespace opendsa
          */
         iterator insert_after(const_iterator pos, std::initializer_list<T> list)
         {
-            insert_range_after_(pos, list.begin(), list.end());
+            return iterator(insert_range_after_(pos, list.begin(), list.end()));
         }
 
         void push_back(const T &value) { push_back_(value); }
 
+        void push_front(const T &value) { push_front_(value); }
+
+        /**
+         * @brief Inserts a new in-place constructed element to the beginning of
+         * the container.
+         *
+         * @param args List of arguments to construct the new element.
+         */
+        template <typename... Args>
+        reference emplace_front(Args &&...args)
+        {
+            push_front_(std::forward<Args>(args)...);
+            return front();
+        }
+
+        /**
+         * @brief Removes the first elemt of the container.
+         */
+        void pop_front()
+        {
+            if (head_ != nullptr)
+            {
+                head_ = std::move(head_->next_ptr_);
+            }
+        }
+
+        /**
+         * @brief Removes the element in pos
+         *
+         * @param pos iterator to the element precdeding the element to remove
+         */
+        iterator erase_after(const_iterator pos)
+        {
+            return iterator(erase_after_(pos.node_ptr_));
+        }
+
+        /**
+         * @brief Removes the elements from range first unitl last
+         *
+         * @param first  iterator to the first of the range
+         * @param last  iterator to the last of the range
+         */
+        iterator erase_after(const_iterator first, const_iterator last)
+        {
+            return iterator(
+                erase_range_after_(first.node_ptr_, last.node_ptr_));
+        }
+
+        // === End MODIFIERS
+
+        // === Begin OPERATIONS
+
+        // === End OPERATIONS
+
     private:
+        Alloc_ alloc;
+
         std::unique_ptr<singly_node_base<T>> head_ = nullptr;
         singly_node_base<T> *                tail_ = nullptr;
 
         template <typename... Args>
-
-        void push_back_(const T &d)
+        void push_back_(Args &&...args)
         {
             if (head_ == nullptr)
             {
-                head_ = std::make_unique<singly_node_base<T>>(d);
+                head_ = std::make_unique<singly_node_base<T>>(
+                    std::forward<Args>(args)...);
                 tail_ = head_.get();
             }
             else
             {
-                tail_->next_ptr_ = std::make_unique<singly_node_base<T>>(d);
-                tail_            = tail_->next_ptr_.get();
+                tail_->next_ptr_ = std::make_unique<singly_node_base<T>>(
+                    std::forward<Args>(args)...);
+                tail_ = tail_->next_ptr_.get();
             }
         }
 
-        void push_front_(const T &d)
+        template <typename... Args>
+        void push_front_(Args &&...args)
         {
             if (head_ == nullptr)
             {
-                head_ = std::make_unique<singly_node_base<T>>(d);
+                head_ = std::make_unique<singly_node_base<T>>(
+                    std::forward<Args>(args)...);
                 tail_ = head_.get();
             }
             else
             {
-                auto new_head       = std::make_unique<singly_node_base<T>>(d);
+                auto new_head = std::make_unique<singly_node_base<T>>(
+                    std::forward<Args>(args)...);
                 new_head->next_ptr_ = std::move(head_);
                 head_               = std::move(new_head);
             }
@@ -407,6 +518,32 @@ namespace opendsa
             {
                 insert_after_(pos, *first);
             }
+        }
+
+        singly_node_base<T> *erase_after_(singly_node_base<T> *pos)
+        {
+            singly_node_base<T> *current
+                = static_cast<singly_node_base<T> *>(pos->next_ptr_.get());
+
+            pos->next_ptr_ = std::move(current->next_ptr_);
+
+            return pos->next_ptr_.get();
+        }
+
+        singly_node_base<T> *erase_range_after_(singly_node_base<T> *first,
+                                                singly_node_base<T> *last)
+        {
+            singly_node_base<T> *current
+                = static_cast<singly_node_base<T> *>(first->next_ptr_.get());
+
+            for (; current->next_ptr_.get() != last;)
+            {
+                current = current->next_ptr_.get();
+            }
+
+            first->next_ptr_ = std::move(current->next_ptr_);
+
+            return last;
         }
     };
 } // namespace opendsa
