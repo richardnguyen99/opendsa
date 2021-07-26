@@ -16,7 +16,7 @@
 #include <cstddef>
 #include <initializer_list>
 #include <memory>
-#include <optional>
+#include <utility>
 
 namespace opendsa
 {
@@ -35,7 +35,7 @@ namespace opendsa
         {
         }
 
-        singly_node_base(const singly_node_base &) = delete;
+        singly_node_base(const singly_node_base &node) = delete;
         singly_node_base &operator=(const singly_node_base &) = delete;
 
         singly_node_base &operator=(singly_node_base &&node) noexcept
@@ -218,10 +218,10 @@ namespace opendsa
 
         ~singly_linked_list()
         {
-            for (std::unique_ptr<singly_node_base<T>> current
-                 = std::move(head_);
-                 current != nullptr; current = std::move(current->next_ptr_))
-                ;
+            // for (std::unique_ptr<singly_node_base<T>> current
+            // = std::move(head_);
+            // current != nullptr; current = std::move(current->next_ptr_))
+            // ;
         }
         // === End MEMBERS
 
@@ -421,12 +421,38 @@ namespace opendsa
 
         void swap(singly_linked_list<T> &ll) noexcept
         {
-            // singly_node_base<T> *tmp_tail
-            // = static_cast<singly_node_base<T> *>(tail_);
-            // tail_    = ll.tail_;
-            // ll.tail_ = tmp_tail;
+            singly_node_base<T> *tmp_tail
+                = static_cast<singly_node_base<T> *>(tail_);
+            tail_    = ll.tail_;
+            ll.tail_ = tmp_tail;
 
             head_.swap(ll.head_);
+        }
+
+        void sort() { sort_(head_.get(), nullptr); }
+
+        /**
+         * @brief
+         *
+         * @tparam Compare
+         * @param comp
+         */
+        template <typename Compare>
+        void sort(Compare comp)
+        {
+            if (head_ == nullptr)
+                return;
+        }
+
+        void merge(const singly_linked_list<T> &ll)
+        {
+            singly_linked_list<T> result;
+            merge_(head_.get(), tail_->next_ptr_.get(), ll.head_.get(),
+                   ll.tail_->next_ptr_.get(), result);
+
+            head_->data_     = result.head_->data_;
+            head_->next_ptr_ = std::move(result.head_->next_ptr_);
+            tail_            = result.tail_;
         }
 
         // === End OPERATIONS
@@ -554,6 +580,109 @@ namespace opendsa
             first->next_ptr_ = std::move(current->next_ptr_);
 
             return last;
+        }
+
+        singly_node_base<T> *copy_(singly_node_base<T> *first,
+                                   singly_node_base<T> *last,
+                                   singly_node_base<T> *dest)
+        {
+            for (; first != last;
+                 first = first->next_ptr_.get(), dest = dest->next_ptr_.get())
+            {
+                dest = first;
+            }
+        }
+
+        void merge_(singly_node_base<T> *first1, singly_node_base<T> *first2,
+                    singly_node_base<T> *second1, singly_node_base<T> *second2,
+                    singly_linked_list<T> &result)
+        {
+            // Returns if we hits the base cases
+            if (first1 == nullptr)
+                return;
+            if (second1 == nullptr)
+                return;
+
+            // result to return, current to move nodes without losing result
+
+            // Initlize the head of result
+            if (first1->data_ < second1->data_)
+            {
+                result.push_back(first1->data_);
+                first1 = first1->next_ptr_.get();
+            }
+            else
+            {
+                result.push_back(second1->data_);
+                second1 = second1->next_ptr_.get();
+            }
+
+            // Iterate one linked-list at a time.
+            // If one runs out before the other, push back the other's values
+            for (; first1 != first2;)
+            {
+                if (second1 == second2)
+                {
+                    for (; first1 != first2; first1 = first1->next_ptr_.get())
+                    {
+                        result.push_back(first1->data_);
+                    }
+
+                    break;
+                }
+
+                if (first1->data_ < second1->data_)
+                {
+                    result.push_back(first1->data_);
+                    first1 = first1->next_ptr_.get();
+                }
+                else
+                {
+                    result.push_back(second1->data_);
+                    second1 = second1->next_ptr_.get();
+                }
+            }
+
+            for (; second1 != second2; second1 = second1->next_ptr_.get())
+            {
+                result.push_back(second1->data_);
+            }
+        }
+
+        void sort_(singly_node_base<T> *start, singly_node_base<T> *end)
+        {
+            // Returns immediately if the size of the container is 0 or 1.
+            if (start == nullptr || start->next_ptr_.get() == end)
+                return;
+
+            // Finds the middle start in the container using the technique
+            // of merge sort. FINDING THE MIDDLE KEY
+
+            // Hare poiniter will traverse twice fast as the tortoise
+            // pointer.
+            singly_node_base<T> *hare     = start;
+            singly_node_base<T> *tortoise = start;
+
+            // If the hare pointer hit the end, or nullptr, the tortoise
+            // pointer will be pointing the middle start.
+            while (hare != end)
+            {
+                hare = hare->next_ptr_.get();
+
+                if (hare != end)
+                {
+                    tortoise = tortoise->next_ptr_.get();
+                    hare     = hare->next_ptr_.get();
+                }
+            }
+
+            // The range is [first, last)
+            sort_(start, tortoise);
+            sort_(tortoise, end);
+
+            singly_node_base<T> *tmp = merge_(start, tortoise, tortoise, end);
+            start                    = tmp;
+            start->next_ptr_         = std::move(tmp->next_ptr_);
         }
     };
 } // namespace opendsa
