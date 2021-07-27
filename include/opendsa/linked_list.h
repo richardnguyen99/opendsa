@@ -649,10 +649,10 @@ namespace opendsa
             }
         }
 
-        void sort_(singly_node_base<T> *start, singly_node_base<T> *end)
+        void sort_(singly_node_iterator<T> begin, singly_node_iterator<T> end)
         {
             // Returns immediately if the size of the container is 0 or 1.
-            if (start == nullptr || start->next_ptr_.get() == end)
+            if (std::distance(begin, end) <= 1)
                 return;
 
             // Finds the middle start in the container using the technique
@@ -660,29 +660,34 @@ namespace opendsa
 
             // Hare poiniter will traverse twice fast as the tortoise
             // pointer.
-            singly_node_base<T> *hare     = start;
-            singly_node_base<T> *tortoise = start;
+            singly_node_iterator hare     = begin;
+            singly_node_iterator tortoise = begin;
 
             // If the hare pointer hit the end, or nullptr, the tortoise
             // pointer will be pointing the middle start.
             while (hare != end)
             {
-                hare = hare->next_ptr_.get();
+                hare++;
 
                 if (hare != end)
                 {
-                    tortoise = tortoise->next_ptr_.get();
-                    hare     = hare->next_ptr_.get();
+                    tortoise++;
+                    hare++;
                 }
             }
 
             // The range is [first, last)
-            sort_(start, tortoise);
+            sort_(begin, tortoise);
             sort_(tortoise, end);
 
-            singly_node_base<T> *tmp = merge_(start, tortoise, tortoise, end);
-            start                    = tmp;
-            start->next_ptr_         = std::move(tmp->next_ptr_);
+            singly_linked_list<T> result;
+
+            // Merge the two sub linked lists and store it
+            merge_(begin.node_ptr_, tortoise.node_ptr_, tortoise.node_ptr_,
+                   end.node_ptr_, result);
+
+            // Copy back to the original list
+            std::copy(std::begin(result), std::end(result), begin);
         }
     };
 } // namespace opendsa
