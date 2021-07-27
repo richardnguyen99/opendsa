@@ -58,9 +58,9 @@ Although I have no guarantee nor support for you to use IRL, every suggestion or
   - [X] Linked list
     - [ ] Doubly-linked list
     - [X] Singly-linked list
-    - [ ] Reverse a linked list
-    - [ ] Insertion
-    - [ ] Deletion
+    - [X] Reverse a linked list
+    - [X] Insertion
+    - [X] Deletion
   - [X] Tree
     - [X] Binary tree
       - [X] Binary Search Tree

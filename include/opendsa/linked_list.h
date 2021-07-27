@@ -455,6 +455,19 @@ namespace opendsa
             tail_            = result.tail_;
         }
 
+        void reverse() noexcept
+        {
+            singly_linked_list<T> tmp;
+            for (singly_node_base<T> *node = head_.get(); node != nullptr;
+                 node                      = node->next_ptr_.get())
+            {
+                tmp.push_front(node->data_);
+            }
+
+            head_ = std::move(tmp.head_);
+            tail_ = tmp.tail_;
+        }
+
         // === End OPERATIONS
 
     private:
