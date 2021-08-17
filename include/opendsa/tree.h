@@ -14,228 +14,239 @@
 
 #pragma once
 
+#include <algorithm>
+#include <cstddef>
+#include <iterator>
 #include <memory>
-#include <queue>
 #include <vector>
 
 namespace opendsa
 {
     /**
-     * @brief Basic, general basic tree implementation
+     * @brief Internal tree node that holds value and pointers to other node
      *
-     * This class represents a node of a tree. It holds
-     * a value to be its representative. The node may
-     * also contain a parent pointer and many unique
-     * child pointers.
-     *
-     * @tparam T
+     * This implementation only contains information about the node itself such
+     * as holding value, pointers to other nodes, height, size, and so on. It
+     * doesn't implement modifiers, access methods or iterators.
      */
     template <typename T>
-    class tree_node
+    struct tree_node_
     {
-    public:
-        tree_node(const T &value) : value_{value} {}
+        constexpr tree_node_() = default;
 
-        /**
-         * @brief Count all elements in the tree
-         */
-        std::size_t size() const
+        constexpr tree_node_(const T &value)
+            : value_(value), parent_node_(nullptr), child_nodes_()
         {
-            std::size_t size = 1;
-
-            for (const std::unique_ptr<tree_node<T>> &child : children_)
-                size += child->size();
-
-            return size;
         }
 
-        /**
-         * @brief Return the longest distance from root to leaf
-         */
-        std::size_t height() const
+        constexpr tree_node_(T &&value)
+            : value_(std::move(value)), parent_node_(nullptr), child_nodes_()
         {
-            std::size_t height = 0;
-
-            if (!children_.empty())
-            {
-                // Store heights of sub trees to find the tallest
-                std::vector<std::size_t> sub_heights;
-
-                // Recursively find sub heights
-                std::transform(std::cbegin(children_), std::cend(children_),
-                               std::back_inserter(sub_heights),
-                               [](const std::unique_ptr<tree_node<T>> &child)
-                               { return child->height(); });
-
-                // Find the highest tree
-                height = *(std::max_element(std::cbegin(sub_heights),
-                                            std::cend(sub_heights))) +
-                         1;
-            }
-
-            return height;
         }
 
-        /**
-         * @brief Return the distance to the root
-         */
-        std::size_t depth() const
-        {
-            std::size_t depth = 0;
+        // Force to not use copy constructor in this implementation
+        // since it is the job of tree.
+        tree_node_(const tree_node_ &node) = delete;
+        tree_node_ &operator=(const tree_node_ &node) = delete;
 
-            // Traverse back to its ancestor nodes until the root node.
-            if (parent_ptr_ != nullptr)
-            {
-                depth = parent_ptr_->depth() + 1;
-            }
+        ~tree_node_() { child_nodes_.clear(); }
 
-            return depth;
-        }
-
-        /**
-         * @brief Get the max number of children of any sub node
-         */
-        std::size_t degree() const
-        {
-            std::size_t degree = 0;
-
-            if (!children_.empty())
-            {
-                // Check degrees of sub node
-                std::vector<std::size_t> sub_degrees;
-
-                std::transform(std::cbegin(children_), std::cend(children_),
-                               std::back_inserter(sub_degrees),
-                               [](const std::unique_ptr<tree_node<T>> &child)
-                               { return child->degree(); });
-
-                std::size_t max_sub_degree = *(std::max_element(
-                    std::cbegin(sub_degrees), std::cend(sub_degrees)));
-
-                degree = std::max(children_.size(), max_sub_degree);
-            }
-
-            return degree;
-        }
-
-        /**
-         * @brief Get the number of leaves of a tree
-         */
-        std::size_t breadth() const
-        {
-            // No children means the node is leaf
-            if (children_.empty())
-            {
-                return 1;
-            }
-
-            std::size_t sub_leaves = 0;
-            for (const std::unique_ptr<tree_node<T>> &child : children_)
-            {
-                sub_leaves += child->breadth();
-            }
-
-            return sub_leaves;
-        }
-
-        /**
-         * @brief Insert a unique element to the tree
-         */
-        void insert(std::unique_ptr<tree_node<T>> child)
-        {
-            child->parent_ptr_ = this;
-            children_.push_back(std::move(child));
-        }
-
-        /**
-         * @brief Get the root value of the tree
-         */
-        T &root() const { return value_; }
-
-    private:
-        T value_;
-
-        // Parent pointer cannnot be unique as there may be
-        // more than one pointer pointing to it.
-        tree_node<T> *                             parent_ptr_ = nullptr;
-        std::vector<std::unique_ptr<tree_node<T>>> children_;
+        T                                           value_;
+        tree_node_<T> *                             parent_node_ = nullptr;
+        std::vector<std::unique_ptr<tree_node_<T>>> child_nodes_;
     };
 
     /**
-     * @brief Binary tree implementation
+     * @brief Iterator base to traverse through the tree
+     *
+     * The Iterator base is to build other types of iterator. It doesn't handle
+     * any traversal logics; just store the information of the current iterator.
      */
-    template <typename T>
-    struct binary_tree_node
+    template <typename T, typename U = std::remove_cv_t<T>>
+    struct iterator_base_
     {
-        binary_tree_node(const T &value) : value_{value} {}
+        using value_type        = U;
+        using pointer_type      = U *;
+        using reference_type    = U &;
+        using size_type         = std::size_t;
+        using difference_type   = std::ptrdiff_t;
+        using iterator_category = std::bidirectional_iterator_tag;
 
-        T                                    value_;
-        binary_tree_node<T> *                parent_ptr  = nullptr;
-        std::unique_ptr<binary_tree_node<T>> left_uptr_  = nullptr;
-        std::unique_ptr<binary_tree_node<T>> right_uptr_ = nullptr;
+        iterator_base_() = default;
+
+        iterator_base_(tree_node_<T> *node) : node_(node)
+        {
+            if (node->parent_node_ != nullptr)
+            {
+                for (auto curr
+                     = std::begin(this->node_->parent_node_->child_nodes_);
+                     curr != std::end(this->node_->parent_node_->child_nodes_);
+                     ++curr)
+                {
+                    if ((*curr).get() == node)
+                    {
+                        this->idx_
+                            = curr
+                              - std::begin(
+                                  this->node_->parent_node_->child_nodes_);
+                    }
+
+                    break;
+                }
+
+                this->siblings_
+                    = this->node_->parent_node_->child_nodes_.size();
+            }
+        }
+
+        reference_type operator*() const noexcept { return node_->value_; }
+
+        pointer_type operator->() const noexcept { return &(node_->value_); }
+
+        tree_node_<T> *node_         = nullptr;
+        bool           skip_current_ = false;
+        size_type      idx_          = 0;
+        size_type      siblings_     = 0;
+    };
+
+    template <typename T>
+    class pre_ordered_iterator : public iterator_base_<T>
+    {
+    public:
+        pre_ordered_iterator() = default;
+
+        pre_ordered_iterator(tree_node_<T> *node) : iterator_base_<T>(node) {}
+
+        bool operator==(const pre_ordered_iterator<T> &iterator) const
+        {
+            return (this->node_ == iterator.node_);
+        }
+
+        bool operator!=(const pre_ordered_iterator<T> &iterator) const
+        {
+            return !(this->node_ == iterator.node_);
+        }
+
+        pre_ordered_iterator<T> &operator++()
+        {
+            // Continue to go down if there are child nodes available
+            if (!this->node_->child_nodes_.empty())
+            {
+                this->node_ = this->node_->child_nodes[0].get();
+                this->idx_  = 0;
+                this->siblings_
+                    = this->node_->parent_node_->child_nodes_.size();
+            }
+            else
+            {
+                if ((++this->idx_) < this->siblings_)
+                {
+                    this->node_
+                        = this->node_->parent_node_->child_nodes_[this->idx_]
+                              .get();
+                }
+                else
+                {
+                    auto next_node_index
+                        = this->node_->parent_node_->parent_node_->child_nodes_
+                              .begin()
+                          - std::find(this->node_->parent_node_->parent_node_
+                                          ->child_nodes_.begin(),
+                                      this->node_->parent_node_->parent_node_
+                                          ->child_nodes_.end(),
+                                      this->node_->parent_node_)
+                          + 1;
+
+                    this->node_ = this->node_->parent_node_->parent_node_
+                                      ->child_nodes_[next_node_index]
+                                      .get();
+                }
+            }
+        }
     };
 
     /**
-     * @brief Binary search tree with specified comparator
+     * @brief The core implementation for tree data structure
+     *
+     * This implementation is supposed to support general tree (n-ary tree). It
+     * can work with other STL algorithms and containers based on the iterators
+     * as well as provide modifier, access and operational methods to work by
+     * itself.
+     *
+     * For simplicity, tree will use the pre-ordered traversal technique to
+     * support iterator.
      */
-    template <typename T, typename Comparator>
-    class binary_search_tree
+    template <typename T>
+    class tree
     {
     public:
-        binary_search_tree(const T &value, Comparator cmp)
+        using value_type      = T;
+        using reference_type  = T &;
+        using pointer_type    = T *;
+        using size_type       = std::size_t;
+        using difference_type = std::ptrdiff_t;
+
+        using node          = tree_node_<T>;
+        using iterator_base = iterator_base_<T>;
+
+        /**
+         * @brief Default constructor. Creates an empty tree.
+         */
+        tree() = default;
+
+        /**
+         * @brief Copy constructor. Creates a tree with the copied value.
+         *
+         * @param value Value to intialize the tree
+         */
+        tree(const reference_type value) : root_(std::make_unique<node>(value))
         {
-            root_uptr_  = std::make_unique<binary_tree_node<T>>(value);
-            comparator_ = cmp;
         }
 
-        binary_tree_node<T> &root() const { return *root_uptr_; }
+        /**
+         * @brief Move constructor. Creates a tree with the moved value.
+         *
+         * @param value Value to initialize the tree.
+         */
+        tree(T &&value) : root_(std::make_unique<node>(std::move(value))) {}
 
-        void insert(const T &value)
+        pre_ordered_iterator<T> begin()
         {
-            auto node = std::make_unique<binary_tree_node<T>>(value);
+            return pre_ordered_iterator<T>(this->root_.get());
+        }
 
-            if (root_uptr_ == nullptr)
-            {
-                root_uptr_ = std::move(node);
-            }
-            else
-            {
-                insert_subtree(std::move(node), root_uptr_.get());
-            }
+        /**
+         * @brief Appends a new child after the node pointed to by pos
+         *
+         * @param pos iterator after which the content will be appended.
+         */
+        template <typename Iter>
+        Iter append(Iter pos, const reference_type value)
+        {
+            return Iter(append_after_(pos, value));
+        }
+
+        template <typename Iter>
+        Iter append(Iter pos, const T &&value)
+        {
+            return Iter(append_after_(pos, std::move(value)));
         }
 
     private:
-        std::unique_ptr<binary_tree_node<T>> root_uptr_ = nullptr;
+        std::unique_ptr<node> root_ = nullptr;
 
-        Comparator comparator_;
-
-        void insert_subtree(std::unique_ptr<binary_tree_node<T>> node,
-                            binary_tree_node<T> *                root_ptr)
+        template <typename Iter, typename... Args>
+        node *append_after_(Iter pos, Args &&...args)
         {
-            if (comparator_(node->value_, root_ptr->value_))
-            {
-                if (root_ptr->left_uptr_ == nullptr)
-                {
-                    root_ptr->left_uptr_ = std::move(node);
-                }
-                else
-                {
-                    insert_subtree(std::move(node),
-                                   root_uptr_->left_uptr_.get());
-                }
-            }
-            else
-            {
-                if (root_ptr->right_uptr_ == nullptr)
-                {
-                    root_ptr->right_uptr_ = std::move(node);
-                }
-                else
-                {
-                    insnert_subtree(std::move(node),
-                                    root_uptr_->right_uptr_.get());
-                }
-            }
+            auto new_node = std::make_unique<node>(std::forward<Args>(args)...);
+
+            new_node->parent_node_ = pos.node_;
+
+            pos.node_->child_nodes_.push_back(std::move(new_node));
+
+            // Appending the new node to the back, it always stay there.
+            return pos.node_->child_nodes_[pos.node_->child_nodes_.size() - 1]
+                .get();
         }
     };
 } // namespace opendsa
