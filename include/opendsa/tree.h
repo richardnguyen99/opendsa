@@ -189,6 +189,26 @@ namespace opendsa
                 this->idx_++;
                 this->node_ = nullptr;
             }
+
+            return *this;
+        }
+
+        pre_ordered_iterator<T> operator++(int)
+        {
+            pre_ordered_iterator<T> copy = *this;
+            ++(*this);
+            return copy;
+        }
+
+        pre_ordered_iterator<T> &operator+=(std::size_t num)
+        {
+            while (num > 0)
+            {
+                ++(*this);
+                --num;
+            }
+
+            return *this;
         }
     };
 
