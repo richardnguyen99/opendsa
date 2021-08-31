@@ -129,38 +129,65 @@ namespace opendsa
 
         pre_ordered_iterator<T> &operator++()
         {
-            // Continue to go down if there are child nodes available
+            // Always traverse down to the leaves
             if (!this->node_->child_nodes_.empty())
             {
-                this->node_ = this->node_->child_nodes[0].get();
-                this->idx_  = 0;
-                this->siblings_
-                    = this->node_->parent_node_->child_nodes_.size();
+                this->idx_      = 0;
+                this->siblings_ = this->node_->child_nodes_.size();
+                this->node_     = this->node_->child_nodes_[0].get();
+            }
+
+            // If there is no child node to traverse, go to siblings
+            else if (this->idx_ < this->siblings_ - 1)
+            {
+                ++this->idx_;
+                this->node_
+                    = this->node_->parent_node_->child_nodes_[this->idx_].get();
+            }
+
+            // If there is no sibling node to traverse, traverse back to parent
+            else if (this->node_->parent_node_->parent_node_ != nullptr)
+            {
+                // Keep track of the parent node of the current node
+                // Then move to the next sibling of that parent node.
+
+                std::size_t parent_idx = 0;
+                for (auto curr = this->node_->parent_node_->parent_node_
+                                     ->child_nodes_.begin();
+                     curr
+                     != this->node_->parent_node_->parent_node_->child_nodes_
+                            .end();
+                     ++curr, ++parent_idx)
+                {
+                    if ((*curr).get() == this->node_->parent_node_)
+                        break;
+                }
+
+                // Reaching the end of the tree
+                if (parent_idx
+                    == this->node_->parent_node_->parent_node_->child_nodes_
+                               .size()
+                           - 1)
+                {
+                    this->node_ == nullptr;
+                }
+
+                else
+                {
+                    // Update states of the newly moved node
+                    this->idx_      = parent_idx + 1;
+                    this->siblings_ = this->node_->parent_node_->parent_node_
+                                          ->child_nodes_.size();
+
+                    this->node_ = this->node_->parent_node_->parent_node_
+                                      ->child_nodes_[this->idx_]
+                                      .get();
+                }
             }
             else
             {
-                if ((++this->idx_) < this->siblings_)
-                {
-                    this->node_
-                        = this->node_->parent_node_->child_nodes_[this->idx_]
-                              .get();
-                }
-                else
-                {
-                    auto next_node_index
-                        = this->node_->parent_node_->parent_node_->child_nodes_
-                              .begin()
-                          - std::find(this->node_->parent_node_->parent_node_
-                                          ->child_nodes_.begin(),
-                                      this->node_->parent_node_->parent_node_
-                                          ->child_nodes_.end(),
-                                      this->node_->parent_node_)
-                          + 1;
-
-                    this->node_ = this->node_->parent_node_->parent_node_
-                                      ->child_nodes_[next_node_index]
-                                      .get();
-                }
+                this->idx_++;
+                this->node_ = nullptr;
             }
         }
     };
@@ -210,10 +237,19 @@ namespace opendsa
          */
         tree(T &&value) : root_(std::make_unique<node>(std::move(value))) {}
 
+        /**
+         * @brief Returns an iterator to the first element of the tree
+         */
         pre_ordered_iterator<T> begin()
         {
             return pre_ordered_iterator<T>(this->root_.get());
         }
+
+        /**
+         * @brief Returns an iterator the end element of the tree
+         *
+         */
+        pre_ordered_iterator<T> end() { return pre_ordered_iterator<T>(); }
 
         /**
          * @brief Appends a new child after the node pointed to by pos
