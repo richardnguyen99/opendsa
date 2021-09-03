@@ -275,6 +275,7 @@ namespace opendsa
          * @brief Appends a new child after the node pointed to by pos
          *
          * @param pos iterator after which the content will be appended.
+         * @param value Copied value to insert
          */
         template <typename Iter>
         Iter append(Iter pos, const reference_type value)
@@ -282,10 +283,43 @@ namespace opendsa
             return Iter(append_after_(pos, value));
         }
 
+        /**
+         * @brief Appends a remove reference child after the node pointed to by
+         * pos
+         *
+         * @param pos iterator after which the content will be appended
+         * @param value remove reference value
+         */
         template <typename Iter>
         Iter append(Iter pos, const T &&value)
         {
             return Iter(append_after_(pos, std::move(value)));
+        }
+
+        /**
+         * @brief Insert a copy value after a node pointed to by pos as a
+         * sibling
+         *
+         * @param pos iterator after which the content will be inserted
+         * @param value  copy value to insert
+         */
+        template <typename Iter>
+        Iter insert(Iter pos, const reference_type value)
+        {
+            return Iter(insert_after_(pos, value));
+        }
+
+        /**
+         * @brief Insert a remove referenced value after a node pointed to by
+         * pos as a sibling
+         *
+         * @param pos  iterator after which teh content will inserted
+         * @param value  remove reference to insert
+         */
+        template <typename Iter>
+        Iter insert(Iter pos, const T &&value)
+        {
+            return Iter(insert_after_(pos, value));
         }
 
     private:
@@ -300,9 +334,24 @@ namespace opendsa
 
             pos.node_->child_nodes_.push_back(std::move(new_node));
 
-            // Appending the new node to the back, it always stay there.
+            // Appending the new node to the back, it always stays there.
             return pos.node_->child_nodes_[pos.node_->child_nodes_.size() - 1]
                 .get();
+        }
+
+        template <typename Iter, typename... Args>
+        node *insert_after_(Iter pos, Args &&...args)
+        {
+            auto new_node = std::make_unique<node>(std::forward<Args>(args)...);
+
+            new_node->parent_node_ = pos.node_->parent_node_;
+
+            auto insert_iterator
+                = std::begin(pos.node_->parent_node_->child_nodes_) + pos.idx_;
+            pos.node_->parent_node_->child_nodes_.insert(insert_iterator + 1,
+                                                         std::move(new_node));
+
+            return pos.node_->parent_node_->child_nodes_[pos.idx_ + 1].get();
         }
     };
 } // namespace opendsa
