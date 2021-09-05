@@ -51,6 +51,72 @@ namespace opendsa
 
         ~tree_node_() { child_nodes_.clear(); }
 
+        std::size_t size() const noexcept
+        {
+            // Each traversable node is counted as one.
+            std::size_t node_number = 1;
+
+            for (const std::unique_ptr<tree_node_<T>> &child :
+                 this->child_nodes_)
+            {
+                node_number += child->size();
+            }
+
+            return node_number;
+        }
+
+        std::size_t height() const noexcept
+        {
+            // Use 0 here when the traversal node is already a leaf.
+            std::size_t heights = 0;
+
+            if (!this->child_nodes_.empty())
+            {
+                std::vector<std::size_t> sub_heights;
+
+                std::transform(std::cbegin(this->child_nodes_),
+                               std::cend(this->child_nodes_),
+                               std::back_inserter(sub_heights),
+                               [](const std::unique_ptr<tree_node_<T>> &child)
+                               { return child->height(); });
+
+                heights = *std::max_element(std::cbegin(sub_heights), std
+                                            : cend(sub_heights))
+                          + 1;
+            }
+
+            return heights;
+        }
+
+        std::size_t depth() const noexcept
+        {
+            // Use 0 here when hte traversal node is already a root
+            std::size_t depth = 0;
+
+            if (this->parent_node_ != nullptr)
+            {
+                depth = this->parent_node_->depth() + 1;
+            }
+
+            return depth;
+        }
+
+        std::size_t breadth() const noexcept
+        {
+            // Use 1 in case the node is already a leaf.
+            if (this->child_nodes_.empty())
+                return 1;
+
+            std::size_t leaves = 0;
+            for (const std::unique_ptr<tree_node_<T>> &child :
+                 this->child_nodes_)
+            {
+                leaves += child->breadth();
+            }
+
+            return leaves;
+        }
+
         T                                           value_;
         tree_node_<T> *                             parent_node_ = nullptr;
         std::vector<std::unique_ptr<tree_node_<T>>> child_nodes_;
@@ -321,6 +387,26 @@ namespace opendsa
         {
             return Iter(insert_after_(pos, value));
         }
+
+        /**
+         * @brief Computes the total number of nodes in the tree
+         */
+        size_type size() const noexcept { return this->root_->size(); }
+
+        /**
+         * @brief Computes the longest distance from one node to its leaves
+         */
+        size_type height() const noexcept { return this->root_->height(); }
+
+        /**
+         * @brief Computes the distance from one node to its root
+         */
+        size_type depth() const noexcept { return this->root_->depth(); }
+
+        /**
+         * @brief Computes the total number of leaves in the tree
+         */
+        size_type breadth() const noexcept { return this->root_->breadth(); }
 
     private:
         std::unique_ptr<node> root_ = nullptr;
