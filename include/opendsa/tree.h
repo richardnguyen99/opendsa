@@ -236,6 +236,7 @@ namespace opendsa
                            - 1)
                 {
                     this->node_ == nullptr;
+                    this->idx_++;
                 }
 
                 else
