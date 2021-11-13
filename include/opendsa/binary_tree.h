@@ -12,339 +12,772 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <iostream>
 #include <iterator>
 #include <memory>
+#include <queue>
+#include <vector>
 
 namespace opendsa
 {
-    template <typename T>
-    struct binary_node_
-    {
-    public:
-        binary_node_() noexcept
-            : parent_node_(nullptr), left_node_(nullptr), right_node_(nullptr)
-        {
-        }
-
-        explicit binary_node_(const T &value) noexcept
-            : parent_node_(nullptr), value_(value), left_node_(nullptr),
-              right_node_(nullptr)
-        {
-        }
-
-        explicit binary_node_(T &&value) noexcept
-            : parent_node_(nullptr), value_(std::move(value)),
-              left_node_(nullptr), right_node_(nullptr)
-        {
-        }
-
-        explicit binary_node_(const T &value, binary_node_<T> *parent_ptr)
-            : parent_node_(parent_ptr), left_node_(nullptr),
-              right_node_(nullptr), value_(value)
-        {
-        }
-
-        binary_node_(const binary_node_<T> &node) = delete;
-        binary_node_ &operator=(const binary_node_<T> &node) = delete;
-
-        ~binary_node_()
-        {
-            std::move(left_node_);
-            std::move(right_node_);
-        }
-
-        binary_node_<T> *parent_node_;
-        T                value_;
-
-        std::unique_ptr<binary_node_<T>> left_node_;
-        std::unique_ptr<binary_node_<T>> right_node_;
-    };
 
     /**
-     * @brief A base iterator class. This only extracts as well as gives acces
-     * to the nodes in a binary tree. It does not handle traversal logic. To do
-     * that, please use other derived classes, or implement your own
+     * @brief A standard tree container whose node has at most two child
+     * nodes and maintains its parent node if not a not root node.
+     *
+     * @tparam T Type of the elements in the tree
+     *
+     * The standard binary tree has a private class node_ to represent
+     * the inside nodes. For tree, it will works with iterator classes
+     * provided below, not the nodes directly. For nodes, it should only
+     * work with "node_" class.
      */
-    template <typename T, typename U = std::remove_cv_t<T>>
-    struct iterator_base_
-    {
-        using value_type        = U;
-        using pointer_type      = U *;
-        using reference_type    = U &;
-        using size_type         = std::size_t;
-        using difference_type   = std::ptrdiff_t;
-        using iterator_category = std::bidirectional_iterator_tag;
-
-        iterator_base_() = default;
-
-        iterator_base_(binary_node_<T> *node) : node_(node)
-        {
-            if (node->parent_node_ != nullptr)
-            {
-                if (node->parent_node_->left_node_.get() == node)
-                {
-                    this->is_left_node_ = true;
-                }
-            }
-        }
-
-        reference_type operator*() const noexcept
-        {
-            return this->node_->value_;
-        }
-
-        pointer_type operator->() const noexcept
-        {
-            return &(this->node_->value_);
-        }
-
-        binary_node_<T> *node_         = nullptr;
-        bool             is_left_node_ = false;
-    };
-
-    template <typename T>
-    class pre_order_iterator : public iterator_base_<T>
-    {
-    public:
-        pre_order_iterator() = default;
-
-        pre_order_iterator(binary_node_<T> *node) : iterator_base_<T>(node) {}
-
-        bool operator==(const pre_order_iterator<T> &iterator) const
-        {
-            return (*this->node_ == iterator.node_);
-        }
-
-        bool operator!=(const pre_order_iterator<T> &iterator) const
-        {
-            return (*this->node_ != iterator.node_);
-        }
-
-        pre_order_iterator<T> &operator++()
-        {
-            // Continue to go down on the left nodes
-            if (this->node_->left_node_ != nullptr)
-            {
-                this->node_         = this->node_->left_node_.get();
-                this->is_left_node_ = true;
-            }
-
-            else if (this->node_->right_node_ != nullptr)
-            {
-                this->node_         = this->node_->right_node_.get();
-                this->is_left_node_ = false;
-            }
-
-            // If there is no left node, go to right node
-            else if (this->node_->parent_node_->right_node_ != nullptr
-                     && this->is_left_node_)
-            {
-                this->node_ = this->node_->parent_node_->right_node_.get();
-                this->is_left_node_ = false;
-            }
-
-            // Otherwise, traverse back to their parent node and continue on the
-            // parent node's sibling
-            else if (this->node_->parent_node_->parent_node_ != nullptr)
-            {
-                bool parent_node_left = false;
-
-                if (this->node_->parent_node_->parent_node_->left_node_.get()
-                    == this->node_->parent_node_)
-                {
-                    parent_node_left = true;
-                }
-
-                if (!parent_node_left)
-                {
-                    this->node_ = nullptr;
-                }
-
-                else
-                {
-                    this->node_ = this->node_->parent_node_->parent_node_
-                                      ->right_node_.get();
-                    this->is_left_node_ = false;
-                }
-            }
-
-            else
-            {
-                this->node_ = nullptr;
-            }
-
-            return *this;
-        }
-
-    private:
-    };
-
     template <typename T>
     class binary_tree
     {
+    private:
+        /**
+         * @brief A simple node that owns two child nodes and maintains
+         * the parent node for utility.
+         *
+         * @tparam T Type of the element.
+         */
+        template <typename U>
+        struct node_
+        {
+            U data_;
+
+            node_<U> *parent_;
+
+            std::unique_ptr<node_<U>> left_;
+            std::unique_ptr<node_<U>> right_;
+
+            /**
+             * @brief Default constructor. Creates an empty binary tree node.
+             */
+            constexpr node_()
+                : parent_(nullptr), left_(nullptr), right_(nullptr)
+            {
+            }
+
+            /**
+             * @brief Creates a binary tree node with specified value.
+             *
+             * @param data Data to create a node
+             */
+            constexpr node_(U data)
+                : data_(data), parent_(nullptr), left_(nullptr), right_(nullptr)
+            {
+            }
+
+            /**
+             * @brief Move constructor. Creates a binary tree node with
+             * specified value.
+             *
+             * @param data Data to create a node
+             */
+            constexpr node_(U &&data)
+                : data_(std::move(data)), parent_(nullptr), left_(nullptr),
+                  right_(nullptr)
+            {
+            }
+        };
+
+        template <typename U>
+        struct iterator_
+        {
+            using value_type     = U;
+            using pointer_type   = U *;
+            using reference_type = U &;
+
+            using size_type         = std::size_t;
+            using difference_type   = std::ptrdiff_t;
+            using iterator_category = std::bidirectional_iterator_tag;
+
+            constexpr iterator_() : n_(nullptr) {}
+
+            constexpr iterator_(node_<U> *node) : n_(node) {}
+
+            constexpr iterator_(const iterator_<U> &base)
+            {
+                this->n_ = base.n_;
+            }
+
+            /**
+             * @brief Gets the value of the iterator.
+             */
+            reference_type operator*() const { return this->n_->data_; }
+
+            /**
+             * @brief Gets the address of the value of the iterator.
+             */
+            pointer_type operator->() const { return &(this->n_->data_); }
+
+            /**
+             * @brief Compares two iterators for range-based and stuff
+             */
+            bool operator==(const iterator_ &other)
+            {
+                return (this->n_ == other.n_);
+            }
+
+            /**
+             * @brief Compares two iterators for range-based and stuff
+             */
+            bool operator!=(const iterator_ &other)
+            {
+                return (this->n_ != other.n_);
+            }
+
+            node_<U> *n_;
+        };
+
     public:
-        using value_type      = T;
-        using reference_type  = T &;
-        using pointer_type    = T *;
-        using size_type       = std::size_t;
-        using difference_type = std::ptrdiff_t;
-
-        using node = binary_node_<T>;
-
-        /**
-         * @brief Default constructor. Constructs an empty binary tree
-         *
-         */
-        binary_tree() noexcept : root_(nullptr) {}
-
-        /**
-         * @brief Copy constructor. Constructs a binary tree with a copied value
-         *
-         * @param value  copied value to initialize
-         */
-        explicit binary_tree(const reference_type value) : root_(value) {}
-
-        /**
-         * @brief Move constructor. Constructs a binary tree with a rvalue value
-         *
-         * @param value  moved value to initialize
-         */
-        explicit binary_tree(T &&value)
-            : root_(std::make_unique<node>(std::move(value)))
+        template <typename U>
+        class inorder_iterator : public iterator_<U>
         {
+        public:
+            constexpr inorder_iterator() = default;
+
+            constexpr inorder_iterator(node_<U> *n) { this->n_ = n; }
+
+            constexpr inorder_iterator(const iterator_<U> &base)
+            {
+                this->n_ = base.n_;
+            }
+
+            /**
+             * @brief Prefix inorder traversal incrementation
+             */
+            inorder_iterator &operator++()
+            {
+                // Check if the node is a leaf node or root
+                if (!this->n_->left_ && !this->n_->right_)
+                {
+                    if (this->n_ == this->n_->parent_)
+                        this->n_ = nullptr;
+
+                    // Traverse to the parent if the child is the left child
+                    // node
+                    else if (this->n_ == this->n_->parent_->left_.get())
+                    {
+                        this->n_ = this->n_->parent_;
+                    }
+                    else
+                    {
+                        auto parent = this->n_->parent_;
+
+                        // Keep traversing to the parents node until the node is
+                        // not the right child node
+                        while (parent && this->n_ == parent->right_.get())
+                        {
+                            this->n_ = parent;
+                            parent   = parent->parent_;
+                        }
+
+                        // If parent is null, this node is the right-most leaf
+                        // node There is no more traversing
+                        if (parent == nullptr)
+                            this->n_ = nullptr;
+
+                        // Convert back to the first if condition.
+                        else
+                            this->n_ = parent;
+                    }
+                }
+
+                else if (this->n_->right_)
+                {
+                    auto successor = this->n_->right_.get();
+
+                    while (successor->left_.get())
+                    {
+                        successor = successor->left_.get();
+                    }
+
+                    this->n_ = successor;
+                }
+
+                return *this;
+            }
+
+            inorder_iterator operator++(int)
+            {
+                inorder_iterator tmp = *this;
+                ++(*this);
+                return tmp;
+            }
+
+            inorder_iterator &operator--()
+            {
+                if (!this->n_->left_ && !this->n_->right_)
+                {
+                    if (this->n_ == this->n_->parent_->right_.get())
+                    {
+                        this->n_ = this->n_->parent_;
+                    }
+
+                    else
+                    {
+                        auto parent = this->n_->parent_;
+
+                        while (parent && this->n_ == parent->left_.get())
+                        {
+                            this->n_ = parent;
+                            parent   = parent->parent_;
+                        }
+
+                        if (parent == nullptr)
+                            this->n_ = nullptr;
+                        else
+                        {
+                            this->n_ = parent;
+                        }
+                    }
+                }
+                else if (this->n_->left_)
+                {
+                    auto predecessor = this->n_->left_.get();
+
+                    while (predecessor->right_.get())
+                    {
+                        predecessor = predecessor->right_.get();
+                    }
+
+                    this->n_ = predecessor;
+                }
+
+                return *this;
+            }
+
+            inorder_iterator operator--(int)
+            {
+                inorder_iterator tmp = *this;
+                --(*this);
+
+                return tmp;
+            }
+        };
+
+        template <typename U>
+        class preorder_iterator : public iterator_<U>
+        {
+        public:
+            constexpr preorder_iterator() = default;
+
+            constexpr preorder_iterator(node_<U> *n) { this->n_ = n; }
+
+            constexpr preorder_iterator(const iterator_<U> &base)
+            {
+                this->n_ = base.n_;
+            }
+
+            /**
+             * @brief Prefix preorder traversal incrementation
+             */
+            preorder_iterator &operator++()
+            {
+                if (!this->n_->left_ && !this->n_->right_)
+                {
+                    if (!this->n_->parent_)
+                        this->n_ = nullptr;
+                    else if (this->n_ == this->n_->parent_->left_.get())
+                    {
+                        auto parent = this->n_->parent_;
+
+                        while (parent && this->n_ == parent->left_.get())
+                        {
+                            this->n_ = parent;
+
+                            if (this->n_->right_)
+                                this->n_ = this->n_->right_.get();
+                            else
+                            {
+                                parent = parent->parent_;
+                            }
+                        }
+
+                        if (parent == nullptr)
+                            this->n_ = nullptr;
+                    }
+                    else
+                    {
+                        auto parent = this->n_->parent_;
+
+                        while (parent && this->n_ == parent->right_.get())
+                        {
+                            this->n_ = parent;
+                            parent   = parent->parent_;
+                        }
+
+                        if (parent == nullptr)
+                            this->n_ = nullptr;
+                        else
+                            this->n_ = parent->right_.get();
+                    }
+                }
+                else if (this->n_->left_)
+                    this->n_ = this->n_->left_.get();
+
+                return *this;
+            }
+
+            preorder_iterator operator++(int)
+            {
+                preorder_iterator tmp = *this;
+                ++(*this);
+                return tmp;
+            }
+
+            preorder_iterator &operator--()
+            {
+                if (!this->n_->left_ && !this->n_->right_)
+                {
+                    if (!this->n_->parent_)
+                        this->n_ = nullptr;
+                    else if (this->n_ == this->n_->parent_->right_.get())
+                    {
+                        auto parent = this->n_->parent;
+
+                        while (parent && this->n_ == parent->right_.get())
+                        {
+                            this->n_ = parent;
+
+                            if (this->n_->left_)
+                                this->n_ = this->n_->left_.get();
+                            else
+                                parent = parent->parent_;
+                        }
+
+                        if (parent == nullptr)
+                            this->n_ = nullptr;
+                    }
+                    else
+                    {
+                        auto parent = this->n_->parent_;
+
+                        while (parent && this->n_ == parent->left_.get())
+                        {
+                            this->n_ = parent;
+                            parent   = parent->parent_;
+                        }
+
+                        if (parent == nullptr)
+                            this->n_ = nullptr;
+                        else
+                            this->n_ = parent->left_.get();
+                    }
+                }
+
+                else if (this->n_->right_)
+                    this->n_ = this->n_->right_.get();
+
+                return *this;
+            }
+
+            preorder_iterator operator--(int)
+            {
+                preorder_iterator tmp = *this;
+                --(*this);
+
+                return tmp;
+            }
+        };
+
+        template <typename U>
+        class postorder_iterator : public iterator_<U>
+        {
+        public:
+            constexpr postorder_iterator() = default;
+
+            constexpr postorder_iterator(node_<U> *n) { this->n_ = n; }
+
+            constexpr postorder_iterator(const iterator_<U> &base)
+            {
+                this->n_ = base.n_;
+            }
+
+            /**
+             * @brief Prefix postorder traversal incrementation
+             */
+            postorder_iterator &operator++()
+            {
+                if (this->n_->parent_ == nullptr)
+                    this->n_ = nullptr;
+                else
+                {
+                    if (this->n_ == this->n_->parent_->left_.get())
+                    {
+                        auto successor = this->n_->parent_->right_.get();
+
+                        while (successor && successor->left_)
+                            successor = successor->left_.get();
+
+                        if (successor == nullptr)
+                            this->n_ = nullptr;
+                        else
+                            this->n_ = successor;
+                    }
+                    else
+                    {
+                        this->n_ = this->n_->parent_;
+                    }
+                }
+
+                return *this;
+            }
+
+            postorder_iterator operator++(int)
+            {
+                postorder_iterator tmp = *this;
+                ++(*this);
+                return tmp;
+            }
+
+            postorder_iterator &operator--()
+            {
+                if (this->n_->parent_ == nullptr)
+                    this->n_ = nullptr;
+                else
+                {
+                    if (this->n_ == this->n_->parent_->right_.get())
+                    {
+                        auto predecessor = this->n_->parent_->left_.get();
+
+                        while (predecessor && predecessor->right_)
+                            predecessor = predecessor->right_.get();
+
+                        if (predecessor == nullptr)
+                            this->n_ = nullptr;
+                        else
+                            this->n_ = predecessor;
+                    }
+                    else
+                        this->n_ = this->n_->parent_;
+                }
+
+                return *this;
+            }
+
+            postorder_iterator operator--(int)
+            {
+                postorder_iterator tmp = *this;
+                --(*this);
+
+                return tmp;
+            }
+        };
+
+        template <typename U>
+        class levelorder_iterator : public iterator_<U>
+        {
+        public:
+            constexpr levelorder_iterator() = default;
+
+            constexpr levelorder_iterator(node_<U> *n)
+            {
+                this->n_ = n;
+
+                if (n->left_)
+                    this->queue_.push_back(n->left_.get());
+
+                if (n->right_)
+                    this->queue_.push_back(n->right_.get());
+            }
+
+            constexpr levelorder_iterator(const iterator_<U> &base)
+            {
+                this->n_ = base.n_;
+
+                if (base.n_->left_)
+                    this->queue_.push_back(base.n_->left_.get());
+
+                if (base.n_->right_)
+                    this->queue_.push_back(base.n_->right_.get());
+            }
+
+            /**
+             * @brief Level order iterator incrementation
+             */
+            levelorder_iterator &operator++()
+            {
+                if (this->queue_.empty())
+                    this->n_ = nullptr;
+                else
+                {
+                    this->stack_.push_back(this->n_);
+                    this->n_ = this->queue_.front();
+                    this->queue_.pop_front();
+
+                    if (this->n_->left_)
+                        this->queue_.push_back(this->n_->left_.get());
+
+                    if (this->n_->right_)
+                        this->queue_.push_back(this->n_->right_.get());
+                }
+
+                return *this;
+            }
+
+            levelorder_iterator operator++(int)
+            {
+                levelorder_iterator tmp = *this;
+                ++(*this);
+
+                return tmp;
+            }
+
+            levelorder_iterator &operator--()
+            {
+                if (!stack_.empty())
+                    this->n_ = nullptr;
+                else
+                {
+                    this->n_ = this->stack_.back();
+                    this->queue_.push_front(this->n_);
+                    this->stack_.pop_back();
+
+                    if (this->n_->right_.get() == this->queue_.back())
+                    {
+                        this->queue_.pop_back();
+                    }
+
+                    if (this->n_->left_.get() == this->queue_.back())
+                    {
+                        this->queue_.pop_back();
+                    }
+                }
+
+                return *this;
+            }
+
+            levelorder_iterator operator--(int)
+            {
+                levelorder_iterator tmp = *this;
+                ++(*this);
+
+                return tmp;
+            }
+
+        private:
+            std::deque<node_<U> *> queue_;
+            std::deque<node_<U> *> stack_;
+        };
+
+        /**
+         * @brief Default constructor. Constructs an empty binary tree.
+         */
+        constexpr binary_tree() : root_(nullptr) {}
+
+        /**
+         * @brief Constructs a binary tree with root.
+         *
+         * @param data Data to create the root.
+         */
+        constexpr explicit binary_tree(T data)
+        {
+            this->root_ = std::make_unique<node_<T>>(data);
         }
 
         /**
-         * @brief Copy constructor. Constructs a binary tree with a copy value
-         * of the other source
+         * @brief Copy constructor. Initializes a new binary tree from a
+         * copied version of another binary tree.
          *
-         * @param other copied other binary tree to initialize
+         * @param other Another copied binary tree to create a new tree.
          */
-        binary_tree(const binary_tree<T> &other)
+        constexpr binary_tree(const binary_tree<T> &other)
         {
-            if (other.root_ == nullptr)
-                this->root_ == nullptr;
-            else
-                copy_binary_tree_(this->root_, other.root_);
+            if (other.root_ != nullptr)
+                copy_(this->root_, other.root_);
         }
 
         /**
-         * @brief Returns the iterator to the first element of the binary tree
+         * @brief Move constructor. Initializes a new binary tree by moving
+         * ownership from another tree.
+         *
+         * @param other Rvalue-binary tree to create a new tree.
+         *
          */
-        pre_order_iterator<T> begin() noexcept
+        constexpr binary_tree(binary_tree<T> &&other)
         {
-            return pre_order_iterator<T>(this->root_.get());
+            if (other.root_ != nullptr)
+                this->root_ = std::move(other->root_);
         }
 
         /**
-         * @brief  Returns the iterator to the end element of the binary tree
+         * @brief Destroys the binary tree object.
          */
-        pre_order_iterator<T> end() noexcept { return pre_order_iterator<T>(); }
+        ~binary_tree() { this->root_.reset(); }
+
+        inorder_iterator<T> inorder_begin() const
+        {
+            node_<T> *successor = this->root_.get();
+
+            while (successor->left_)
+            {
+                successor = successor->left_.get();
+            }
+
+            return inorder_iterator(successor);
+        }
+
+        inorder_iterator<T> inorder_end() const
+        {
+            return inorder_iterator<T>();
+        }
+
+        preorder_iterator<T> preorder_begin() const
+        {
+            return preorder_iterator<T>(this->root_.get());
+        }
+
+        preorder_iterator<T> preorder_end() const
+        {
+            return preorder_iterator<T>();
+        }
+
+        postorder_iterator<T> postorder_begin() const
+        {
+            node_<T> *successor = this->root_.get();
+
+            while (successor->left_)
+            {
+                successor = successor->left_.get();
+            }
+
+            return postorder_iterator(successor);
+        }
+
+        postorder_iterator<T> postorder_end() const
+        {
+            return postorder_iterator<T>();
+        }
+
+        levelorder_iterator<T> levelorder_begin() const
+        {
+            return levelorder_iterator<T>(this->root_.get());
+        }
+
+        levelorder_iterator<T> levelorder_end() const
+        {
+            return levelorder_iterator<T>();
+        }
+
+        inorder_iterator<T> begin() const { return inorder_begin(); }
+
+        inorder_iterator<T> end() const { return inorder_end(); }
 
         /**
-         * @brief Returns the raw pointer to the root of the binary tree
+         * @brief Displays the binary tree in in-order fashion.
          */
-        node root() noexcept { return this->root_.get(); }
+        void inorder() const { std::cout << *this; }
 
         /**
-         * @brief Inserts a new copied node to the left of the node pointed by
-         * pos
+         * @brief Displays the binary tree in pre-order fashion.
          *
-         * @param pos  iterator to the left of which the content is inserted
-         * @param value copied value to insert
          */
-        template <typename Iter>
-        Iter insert_left(Iter pos, const reference_type value)
+        void preorder() const
         {
 
-            return Iter(insert_left_(pos, value));
+            for (auto curr = preorder_begin(); curr != preorder_end(); ++curr)
+            {
+                std::cout << *curr << ",";
+            }
+            std::cout << std::endl;
         }
 
         /**
-         * @brief Inserts a new rvalue node to the left of the node pointed by
-         * pos
-         *
-         * @param pos  iterator to the left of which the content is inserted
-         * @param value rvalue value to insert
+         * @brief Displays the binary tree in post-order fashion.
          */
-        template <typename Iter>
-        Iter insert_left(Iter pos, T &&value)
+        void postorder() const
         {
-            return Iter(insert_left_(pos, value));
+
+            for (auto curr = postorder_begin(); curr != postorder_end(); ++curr)
+            {
+                std::cout << *curr << ",";
+            }
+            std::cout << std::endl;
         }
 
         /**
-         * @brief Inserts a new copied node to the right of the node pointed by
-         * pos
-         *
-         * @param pos  iterator to the right of which the content is inserted
-         * @param value copied value to insert
+         * @brief Displays the binary tree in level-order fashion
          */
-        template <typename Iter>
-        Iter insert_right(Iter pos, const reference_type value)
+        void levelorder() const
         {
 
-            return Iter(insert_right_(pos, value));
+            for (auto curr = levelorder_begin(); curr != levelorder_end();
+                 ++curr)
+            {
+                std::cout << *curr << ",";
+            }
+            std::cout << std::endl;
         }
 
-        /**
-         * @brief Inserts a new rvalue node to the right of the node pointed by
-         * pos
-         *
-         * @param pos  iterator to the right of which the content is inserted
-         * @param value rvalue value to insert
-         */
-        template <typename Iter>
-        Iter insert_right(Iter pos, T &&value)
+        template <typename Iter = iterator_<T>>
+        Iter insert_left(Iter pos, const T &value)
         {
-            return Iter(insert_right_(pos, value));
+            insert_node_(pos.n_->left_, pos.n_, value);
+
+            return Iter(pos.n_->left_.get());
+        }
+
+        template <typename Iter = iterator_<T>>
+        Iter insert_right(Iter pos, const T &value)
+        {
+            insert_node_(pos.n_->right_, pos.n_, value);
+
+            return Iter(pos.n_->right_.get());
+        }
+
+        friend std::ostream &operator<<(std::ostream &        out,
+                                        const binary_tree<T> &tree)
+        {
+            for (auto &e : tree)
+                out << e << ",";
+
+            out << std::endl;
         }
 
     private:
-        std::unique_ptr<node> root_;
+        std::unique_ptr<node_<T>> root_;
 
-        void copy_binary_tree_(std::unique_ptr<node> &root,
-                               std::unique_ptr<node> &source)
+        void copy_(std::unique_ptr<node_<T>> &      dest,
+                   const std::unique_ptr<node_<T>> &src)
         {
-            if (source == nullptr)
-            {
-                root == nullptr;
-            }
+            // Use copy_ to create a new node
+            if (src == nullptr)
+                return;
 
-            root = std::make_unique<node>(source->value_, source->parent_node_);
+            dest = std::make_unique<node_<T>>(src->data_);
 
-            copy_binary_tree_(root->left_node_, source->left_node_);
-            copy_binary_tree_(root->right_node_, source->right_node_);
+            copy_(dest->left_, src->left_);
+            copy_(dest->right_, src->right_);
         }
 
-        template <typename Iter, typename... Args>
-        node *insert_left_(Iter pos, Args &&...args)
+        template <typename Iter = iterator_<T>, typename... Args>
+        void insert_node_(std::unique_ptr<node_<T>> &node, node_<T> *&parent,
+                          Args &&...args)
         {
-            if (pos.node_->left_node_ == nullptr)
+            if (node != nullptr)
             {
-                auto new_node
-                    = std::make_unique<node>(std::forward<Args>(args)...);
-                new_node->parent_node_ = pos.node_;
-
-                pos.node_->left_node_ = std::move(new_node);
+                std::cerr << "There is a node existing at this position, "
+                             "insert aborted!\n";
+                return;
             }
 
-            return pos.node_->left_node_.get();
-        }
-
-        template <typename Iter, typename... Args>
-        node *insert_right_(Iter pos, Args &&...args)
-        {
-            if (pos.node_->right_node_ == nullptr)
-            {
-                auto new_node
-                    = std::make_unique<node>(std::forward<Args>(args)...);
-                new_node->parent_node_ = pos.node_;
-
-                pos.node_->right_node_ = std::move(new_node);
-            }
-
-            return pos.node_->right_node_.get();
+            node = std::make_unique<node_<T>>(std::forward<Args>(args)...);
+            node->parent_ = parent;
         }
     };
+
+    template <typename T>
+    std::vector<T> inorder_flatten(const binary_tree<T> &tree)
+    {
+        std::vector<T> v;
+
+        for (auto &e : tree)
+            v.push_back(e);
+
+        return v;
+    }
 } // namespace opendsa
