@@ -81,6 +81,55 @@ namespace opendsa
                   right_(nullptr)
             {
             }
+
+            /**
+             * @brief Copy constructor. Creates a binary tree with copied binary
+             * tree.
+             *
+             * @param base Copied binary tree to create a tree
+             */
+            node_(const node_<U> *&base)
+            {
+                if (base != nullptr)
+                {
+                    this->data_ = base->data_;
+
+                    copy_(this->left_, base->left_);
+                    copy_(this->right_, base->right_);
+                }
+            }
+
+            /**
+             * @brief Move constructor. Move an existing tree to a binary tree.
+             *
+             * @param base Moved binary tree to create a tree.
+             */
+            node_(node_<U> *&&base)
+            {
+                if (base != nullptr)
+                {
+                    this->data_ = base->data_;
+
+                    this->left_  = std::move(base->left_);
+                    this->right_ = std::move(base->right_);
+                }
+            }
+
+        private:
+            void copy_(std::unique_ptr<node_ *> &      dest,
+                       const std::unique_ptr<node_ *> &src)
+            {
+                if (src == nullptr)
+                    dest = nullptr;
+                else
+                {
+                    dest          = std::make_unique<node_ *>(src->data_);
+                    dest->parent_ = src->parent_;
+
+                    copy_(dest->left_, src->left_);
+                    copy_(dest->right_, src->right_);
+                }
+            }
         };
 
         template <typename U>
@@ -96,7 +145,7 @@ namespace opendsa
 
             constexpr iterator_() : n_(nullptr) {}
 
-            constexpr iterator_(node_<U> *node) : n_(node) {}
+            constexpr iterator_(node_<U> *&node) : n_(node) {}
 
             constexpr iterator_(const iterator_<U> &base)
             {
@@ -151,51 +200,36 @@ namespace opendsa
              */
             inorder_iterator &operator++()
             {
-                // Check if the node is a leaf node or root
-                if (!this->n_->left_ && !this->n_->right_)
+                if (this->n_->right_)
                 {
-                    if (this->n_ == this->n_->parent_)
+                    auto successor = this->n_->right_.get();
+
+                    while (successor && successor->left_)
+                    {
+                        successor = successor->left_.get();
+                    }
+
+                    this->n_ = successor;
+                }
+                else
+                {
+                    auto parent = this->n_->parent_;
+
+                    if (parent == nullptr)
                         this->n_ = nullptr;
 
-                    // Traverse to the parent if the child is the left child
-                    // node
-                    else if (this->n_ == this->n_->parent_->left_.get())
-                    {
-                        this->n_ = this->n_->parent_;
-                    }
+                    else if (this->n_ == parent->left_.get())
+                        this->n_ = parent;
                     else
                     {
-                        auto parent = this->n_->parent_;
-
-                        // Keep traversing to the parents node until the node is
-                        // not the right child node
                         while (parent && this->n_ == parent->right_.get())
                         {
                             this->n_ = parent;
                             parent   = parent->parent_;
                         }
 
-                        // If parent is null, this node is the right-most leaf
-                        // node There is no more traversing
-                        if (parent == nullptr)
-                            this->n_ = nullptr;
-
-                        // Convert back to the first if condition.
-                        else
-                            this->n_ = parent;
+                        this->n_ = parent;
                     }
-                }
-
-                else if (this->n_->right_)
-                {
-                    auto successor = this->n_->right_.get();
-
-                    while (successor->left_.get())
-                    {
-                        successor = successor->left_.get();
-                    }
-
-                    this->n_ = successor;
                 }
 
                 return *this;
@@ -277,37 +311,49 @@ namespace opendsa
              */
             preorder_iterator &operator++()
             {
-                if (!this->n_->left_ && !this->n_->right_)
+                // Go to left node if available
+                if (this->n_->left_)
+                    this->n_ = this->n_->left_.get();
+                // If not, go to the right node if available
+                else if (this->n_->right_)
+                    this->n_ = this->n_->right_.get();
+                // Otherwise, this is a leaf node
+                else if (!this->n_->right_ && !this->n_->left_)
                 {
-                    if (!this->n_->parent_)
-                        this->n_ = nullptr;
-                    else if (this->n_ == this->n_->parent_->left_.get())
+                    // Check if this is a left child node
+                    if (this->n_ == this->n_->parent_->left_.get())
                     {
                         auto parent = this->n_->parent_;
 
-                        while (parent && this->n_ == parent->left_.get())
+                        // Ignore already-visited nodes until there
+                        // is a node with a right child node
+                        while (parent && !parent->right_)
                         {
-                            this->n_ = parent;
-
-                            if (this->n_->right_)
-                                this->n_ = this->n_->right_.get();
-                            else
-                            {
-                                parent = parent->parent_;
-                            }
+                            parent = parent->parent_;
                         }
 
+                        // Traverse to root node
                         if (parent == nullptr)
                             this->n_ = nullptr;
+                        else
+                            this->n_ = parent->right_.get();
                     }
                     else
                     {
                         auto parent = this->n_->parent_;
 
+                        // Escape the the subtree
                         while (parent && this->n_ == parent->right_.get())
                         {
                             this->n_ = parent;
                             parent   = parent->parent_;
+                        }
+
+                        // Convert back to the case ignore already-visited
+                        // nodes.
+                        while (parent && !parent->right_)
+                        {
+                            parent = parent->parent_;
                         }
 
                         if (parent == nullptr)
@@ -316,8 +362,6 @@ namespace opendsa
                             this->n_ = parent->right_.get();
                     }
                 }
-                else if (this->n_->left_)
-                    this->n_ = this->n_->left_.get();
 
                 return *this;
             }
@@ -402,25 +446,28 @@ namespace opendsa
              */
             postorder_iterator &operator++()
             {
-                if (this->n_->parent_ == nullptr)
-                    this->n_ = nullptr;
+                auto parent = this->n_->parent_;
+
+                if (parent == nullptr)
+                    this->n_ = parent;
+                else if (this->n_ == parent->right_.get())
+                {
+                    this->n_ = parent;
+                }
                 else
                 {
-                    if (this->n_ == this->n_->parent_->left_.get())
+                    if (parent->right_)
                     {
-                        auto successor = this->n_->parent_->right_.get();
+                        auto successor = parent->right_.get();
 
                         while (successor && successor->left_)
                             successor = successor->left_.get();
 
-                        if (successor == nullptr)
-                            this->n_ = nullptr;
-                        else
-                            this->n_ = successor;
+                        this->n_ = successor;
                     }
                     else
                     {
-                        this->n_ = this->n_->parent_;
+                        this->n_ = parent;
                     }
                 }
 
@@ -609,6 +656,14 @@ namespace opendsa
          */
         ~binary_tree() { this->root_.reset(); }
 
+        binary_tree &operator=(const binary_tree<T> &other)
+        {
+            if (this != &other || other.root_ != nullptr)
+            {
+                copy_(this->root_, other.root_);
+            }
+        }
+
         inorder_iterator<T> inorder_begin() const
         {
             node_<T> *successor = this->root_.get();
@@ -640,9 +695,13 @@ namespace opendsa
         {
             node_<T> *successor = this->root_.get();
 
-            while (successor->left_)
+            while (successor->left_ || successor->right_)
             {
-                successor = successor->left_.get();
+                if (successor->left_)
+                    successor = successor->left_.get();
+
+                else
+                    successor = successor->right_.get();
             }
 
             return postorder_iterator(successor);
@@ -713,6 +772,8 @@ namespace opendsa
             std::cout << std::endl;
         }
 
+        node_<T> *root() const { return this->root_.get(); }
+
         template <typename Iter = iterator_<T>>
         Iter insert_left(Iter pos, const T &value)
         {
@@ -725,6 +786,22 @@ namespace opendsa
         Iter insert_right(Iter pos, const T &value)
         {
             insert_node_(pos.n_->right_, pos.n_, value);
+
+            return Iter(pos.n_->right_.get());
+        }
+
+        template <typename Iter = iterator_<T>>
+        Iter insert_left_subtree(Iter pos, node_<T> *node)
+        {
+            insert_subtree_(pos.n_->left_, pos.n_, node);
+
+            return Iter(pos.n_->left_.get());
+        }
+
+        template <typename Iter = iterator_<T>>
+        Iter insert_right_subtree(Iter pos, node_<T> *node)
+        {
+            insert_subtree_(pos.n_->right_, pos.n_, node);
 
             return Iter(pos.n_->right_.get());
         }
@@ -748,13 +825,14 @@ namespace opendsa
             if (src == nullptr)
                 return;
 
-            dest = std::make_unique<node_<T>>(src->data_);
+            dest          = std::make_unique<node_<T>>(src->data_);
+            dest->parent_ = src->parent_;
 
             copy_(dest->left_, src->left_);
             copy_(dest->right_, src->right_);
         }
 
-        template <typename Iter = iterator_<T>, typename... Args>
+        template <typename... Args>
         void insert_node_(std::unique_ptr<node_<T>> &node, node_<T> *&parent,
                           Args &&...args)
         {
@@ -767,6 +845,23 @@ namespace opendsa
 
             node = std::make_unique<node_<T>>(std::forward<Args>(args)...);
             node->parent_ = parent;
+        }
+
+        void insert_subtree_(std::unique_ptr<node_<T>> &node, node_<T> *&parent,
+                             node_<T> *other)
+        {
+            if (node != nullptr)
+            {
+                std::cerr << "There is a node existing at this position, "
+                             "insert aborted!\n";
+                return;
+            }
+
+            node          = std::make_unique<node_<T>>(other->data_);
+            node->parent_ = parent;
+
+            copy_(node->left_, other->left_);
+            copy_(node->right_, other->right_);
         }
     };
 
