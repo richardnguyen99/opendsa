@@ -772,8 +772,39 @@ namespace opendsa
             std::cout << std::endl;
         }
 
-        node_<T> *root() const { return this->root_.get(); }
+        /**
+         * @brief Checks if the content is in the binary tree or not
+         *
+         * @param value The content to check
+         */
+        bool contain(T value) { return get(value) != inorder_end(); }
 
+        /**
+         * @brief Returns the iterator for the content if exists in the binary
+         * tree
+         *
+         * @param value Iterator corresponding to the content, end() if not
+         * existing.
+         */
+        template <typename Iter = iterator_<T>>
+        Iter get(T value)
+        {
+            inorder_iterator<T> curr = inorder_begin();
+            inorder_iterator<T> end  = inorder_end();
+
+            for (; curr != end && *curr != value; ++curr)
+            {
+            }
+
+            return curr;
+        }
+
+        /**
+         * @brief Inserts the content to the left child.
+         *
+         * @param pos Iterator to insert new content
+         * @param value The content to insert
+         */
         template <typename Iter = iterator_<T>>
         Iter insert_left(Iter pos, const T &value)
         {
@@ -782,6 +813,12 @@ namespace opendsa
             return Iter(pos.n_->left_.get());
         }
 
+        /**
+         * @brief Inserts the content to the right child
+         *
+         * @param pos Iterator to insert new content
+         * @param value The conte to insert
+         */
         template <typename Iter = iterator_<T>>
         Iter insert_right(Iter pos, const T &value)
         {
@@ -806,6 +843,37 @@ namespace opendsa
             return Iter(pos.n_->right_.get());
         }
 
+        /**
+         * @brief Removes the content from the binary tree.
+         *
+         * @param pos Iterator to that content
+         *
+         * Since this is a binary tree with no restriction,
+         * the function simply swaps the content with the
+         * rightmost leaf node, then delete that leaf node.
+         */
+        template <typename Iter = iterator_<T>>
+        Iter remove(Iter pos)
+        {
+            auto curr = pos;
+            auto next = ++curr;
+            auto end  = Iter();
+
+            for (; next != end; ++next)
+                curr = next;
+
+            curr.n_ = nullptr;
+
+            return pos;
+        }
+
+        /**
+         * @brief Overloaded operator to print out the content
+         * in the binary tree with inorder fashion.
+         *
+         * @param out std::ostream object
+         * @param tree Binary tree to display
+         */
         friend std::ostream &operator<<(std::ostream &        out,
                                         const binary_tree<T> &tree)
         {
