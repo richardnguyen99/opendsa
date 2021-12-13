@@ -614,7 +614,7 @@ namespace opendsa
         /**
          * @brief Default constructor. Constructs an empty binary tree.
          */
-        constexpr binary_tree() : root_(nullptr) {}
+        constexpr binary_tree() noexcept : root_(nullptr) {}
 
         /**
          * @brief Constructs a binary tree with root.
@@ -645,7 +645,7 @@ namespace opendsa
          * @param other Rvalue-binary tree to create a new tree.
          *
          */
-        constexpr binary_tree(binary_tree<T> &&other)
+        constexpr binary_tree(binary_tree<T> &&other) noexcept
         {
             if (other.root_ != nullptr)
                 this->root_ = std::move(other->root_);
@@ -777,7 +777,52 @@ namespace opendsa
          *
          * @param value The content to check
          */
-        bool contain(T value) { return get(value) != inorder_end(); }
+        bool contain(T value) const { return get(value) != inorder_end(); }
+
+        /**
+         * @brief Checks if the binary tree has no content or not
+         */
+        bool empty() const { return this->root_ == nullptr; }
+
+        /**
+         * @brief Computes the height of the binary tree object.
+         */
+        std::size_t height() const
+        {
+            if (this->root_ == nullptr)
+                return 0;
+
+            std::queue<node_<T> *> nodes;
+            nodes.push(this->root_.get());
+
+            std::size_t height = 0;
+            std::size_t q_size = 0;
+
+            while (!nodes.empty())
+            {
+                q_size = nodes.size();
+
+                while (q_size--)
+                {
+                    node_<T> *front = nodes.front();
+                    nodes.pop();
+
+                    if (front->left_)
+                    {
+                        nodes.push(front->left_.get());
+                    }
+
+                    if (front->right_)
+                    {
+                        nodes.push(front->right_.get());
+                    }
+                }
+
+                height++;
+            }
+
+            return height;
+        }
 
         /**
          * @brief Returns the iterator for the content if exists in the binary
