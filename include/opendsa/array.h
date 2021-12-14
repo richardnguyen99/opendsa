@@ -11,9 +11,9 @@
 #ifndef _STATIC_ARRAY_H
 #define _STATIC_ARRAY_H
 
-#include <array>
 #include <cstddef>
 #include <initializer_list>
+#include <iostream>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -275,28 +275,28 @@ namespace opendsa
         std::cout << std::endl;
     }
 
-    template <std::size_t O, class T, std::size_t N>
+    template <std::size_t I, class T, std::size_t N>
     constexpr T &get(array<T, N> &a) noexcept
     {
         static_assert(I < N, "index out of range");
         return a[I];
     }
 
-    template <std::size_t O, class T, std::size_t N>
+    template <std::size_t I, class T, std::size_t N>
     constexpr T &&get(array<T, N> &&a) noexcept
     {
         static_assert(I < N, "index out of range");
         return std::move(a[I]);
     }
 
-    template <std::size_t O, class T, std::size_t N>
+    template <std::size_t I, class T, std::size_t N>
     constexpr const T &get(const array<T, N> &a) noexcept
     {
         static_assert(I < N, "index out of range");
         return a[I];
     }
 
-    template <std::size_t O, class T, std::size_t N>
+    template <std::size_t I, class T, std::size_t N>
     constexpr const T &&get(const array<T, N> &&a) noexcept
     {
         static_assert(I < N, "index out of range");

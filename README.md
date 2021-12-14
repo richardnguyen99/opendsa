@@ -50,8 +50,8 @@ Although I have no guarantee nor support for you to use IRL, every suggestion or
 # Features
 
 - Data structures:
-  - [X] Static array
-  - [X] Dynamic array
+  - [X] Static array (`opendsa::array`)
+  - [X] Dynamic array (`opendsa::vector`)
   - [ ] Stack
   - [ ] Queue
   - [X] Deque
