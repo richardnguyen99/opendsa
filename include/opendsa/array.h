@@ -118,55 +118,103 @@ namespace opendsa
         }
 
         // Iterators
+        /**
+         * @brief Read/write iterator pointing to the first element in the
+         * %array
+         */
         constexpr iterator begin() noexcept { return this->container_.get(); }
 
+        /**
+         * @brief Read-only iterator pointing to the first element in the
+         * %array
+         */
         constexpr const_iterator begin() const noexcept
         {
             return this->container_.get();
         }
 
+        /**
+         * @brief Read/write iterator pointing to the end in the
+         * %array
+         */
         constexpr iterator end() noexcept { return this->container_.get() + N; }
 
+        /**
+         * @brief Read-only iterator pointing to the end in the
+         * %array
+         */
         constexpr const_iterator end() const noexcept
         {
             return this->container_.get() + N;
         }
 
+        /**
+         * @brief Read-only iterator pointing to the first element in the
+         * %array
+         */
         constexpr const_iterator cbegin() const noexcept
         {
             return this->container_.get();
         }
 
+        /**
+         * @brief Read-only iterator pointing to the end in the
+         * %array
+         */
         constexpr const_iterator cend() const noexcept
         {
             return this->container_.get() + N;
         }
 
+        /**
+         * @brief Read/write iterator pointing to the first element in the
+         * %array in reversed order.
+         */
         constexpr reverse_iterator rbegin() noexcept
         {
             return reverse_iterator(end());
         }
 
+        /**
+         * @brief Read/write iterator pointing to the end in the
+         * %array in reversed order.
+         */
         constexpr reverse_iterator rend() noexcept
         {
             return reverse_iterator(begin());
         }
 
+        /**
+         * @brief Read-only iterator pointing to the first element in the
+         * %array in reversed order.
+         */
         constexpr const_reverse_iterator rbegin() const noexcept
         {
             return const_reverse_iterator(end());
         }
 
+        /**
+         * @brief Read-only iterator pointing to the end in the
+         * %array in reversed order.
+         */
         constexpr const_reverse_iterator rend() const noexcept
         {
             return const_reverse_iterator(begin());
         }
 
+        /**
+         * @brief Read-only iterator pointing to the first element in the
+         * %array in reversed order.
+         */
         constexpr const_reverse_iterator crbegin() const noexcept
         {
             return const_reverse_iterator(end());
         }
 
+        /**
+         * @brief Read-only iterator pointing to the end in the
+         * %array in reversed order.
+         */
         constexpr const_reverse_iterator crend() const noexcept
         {
             return const_reverse_iterator(begin());
@@ -178,16 +226,34 @@ namespace opendsa
         constexpr bool empty() const noexcept { return size() == 0; }
 
         // Member access
+        /**
+         * @brief Access to the content held at the position %i in the %array
+         * without range-checking
+         *
+         * @param i Index in the %array
+         */
         constexpr reference operator[](size_type i)
         {
             return *(this->container_.get() + i);
         }
 
+        /**
+         * @brief Access to the read-only content held at the position %i in the
+         * %array without range-checking
+         *
+         * @param i Index in the %array
+         */
         constexpr const_reference operator[](size_type i) const
         {
             return *(this->container_.get() + i);
         }
 
+        /**
+         * @brief Access to the valid content held at position %i in the
+         * %array, or throw otherwise
+         *
+         * @param i Index in the %array
+         */
         constexpr reference at(size_type i)
         {
             if (i >= N)
@@ -197,6 +263,12 @@ namespace opendsa
             return this->operator[](i);
         }
 
+        /**
+         * @brief Access to the read-only valid content held at position %i in
+         * the %array, or throw otherwise
+         *
+         * @param i Index in the %array
+         */
         constexpr const_reference at(size_type i) const
         {
             if (i >= N)
@@ -206,19 +278,37 @@ namespace opendsa
             return this->operator[](i);
         }
 
+        /**
+         * @brief Access to the first content in the %array
+         */
         constexpr reference front() { return this->operator[](0); }
 
+        /**
+         * @brief Read-only access to the first content in the %array
+         */
         constexpr const_reference front() const { return this->operator[](0); }
 
+        /**
+         * @brief Access to the last content in the %array
+         */
         constexpr reference back() { return this->operator[](N - 1); }
 
+        /**
+         * @brief Read-only access to the last content in the %array
+         */
         constexpr const_reference back() const
         {
             return this->operator[](N - 1);
         }
 
+        /**
+         * @brief Return the raw C-style pointer of the %array
+         */
         constexpr pointer data() noexcept { return this->container_.get(); }
 
+        /**
+         * @brief Return the raw read-only C-style pointer of the %array
+         */
         constexpr const_pointer data() const noexcept
         {
             return this->container_.get();
@@ -233,11 +323,19 @@ namespace opendsa
         }
 
         // Operations
-        constexpr void fill(const T &value)
-        {
-            std::fill_n(begin(), begin() + N, value);
-        }
+        /**
+         * @brief Fill the %array with %value
+         *
+         * @param value Value to fill
+         */
+        constexpr void fill(const T &value) { std::fill_n(begin(), N, value); }
 
+        /**
+         * @brief Exchange the contents of two %array of the same type and
+         * number of elements
+         *
+         * @param other Another array to swap
+         */
         constexpr void swap(array &other) noexcept
         {
             this->container_.swap(other.container_);
