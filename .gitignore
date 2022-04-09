@@ -35,3 +35,8 @@
 main.cpp
 build/
 __*.h
+main
+Makefile*
+cmake_install.cmake
+CMakeCache.txt
+CMakeFiles

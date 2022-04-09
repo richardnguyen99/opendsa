@@ -2,14 +2,14 @@
  * @file vector.h
  * @author Richar Nguyen (richard.ng0616@gmail.com)
  * @brief Header for dynamic array
- * @version 0.1
- * @date 2021-12-12
+ * @version 0.2
+ * @date 2021-04-08
  *
  * @copyright Copyright (c) 2021
  */
 
 #ifndef _DYNAMIC_ARRAY_H
-#define _DYNAMIC_ARRAY_H
+#define _DYNAMIC_ARRAY_H 1
 
 #include <cstddef>
 #include <initializer_list>
@@ -49,7 +49,7 @@ namespace opendsa
         /**
          * @brief Default constructor. Create a %vector with empty size.
          */
-        constexpr vector() noexcept : size_(0)
+        constexpr vector() : size_(0)
         {
             this->container_ = std::make_unique<value_type[]>(this->capacity_);
         }
@@ -60,7 +60,7 @@ namespace opendsa
          * @param total Number of elements to insert
          * @param value Value of the same type to insert
          */
-        constexpr vector(size_type total, const_reference value)
+        explicit constexpr vector(size_type total, const_reference value)
             : size_(total), capacity_(total)
         {
             this->container_ = std::make_unique<value_type[]>(total);
@@ -73,7 +73,7 @@ namespace opendsa
          *
          * @param total Number of elements to insert
          */
-        constexpr explicit vector(size_type total) : size_(0), capacity_(total)
+        explicit constexpr vector(size_type total) : size_(0), capacity_(total)
         {
             this->container_ = std::make_unique<value_type[]>(total);
         }
@@ -171,7 +171,7 @@ namespace opendsa
          *
          * @param other Another %vector to move
          */
-        constexpr vector &operator=(vector &&other)
+        constexpr vector &operator=(vector &&other) noexcept
         {
             if (std::addressof(other) == this)
                 return *this;
@@ -209,13 +209,16 @@ namespace opendsa
          * @brief Read/write iterator pointing to the first element in the
          * %vector
          */
-        constexpr iterator begin() noexcept { return this->container_.get(); }
+        [[nodiscard]] constexpr iterator begin() noexcept
+        {
+            return this->container_.get();
+        }
 
         /**
          * @brief Read-only iterator pointing to the first element in the
          * %vector
          */
-        constexpr const_iterator begin() const noexcept
+        [[nodiscard]] constexpr const_iterator begin() const noexcept
         {
             return this->container_.get();
         }
@@ -223,7 +226,7 @@ namespace opendsa
         /**
          * @brief Read/write iterator pointing to the end in the %vector
          */
-        constexpr iterator end() noexcept
+        [[nodiscard]] constexpr iterator end() noexcept
         {
             return this->container_.get() + this->size_;
         }
@@ -231,7 +234,7 @@ namespace opendsa
         /**
          * @brief Read-only iterator pointing to the end in the %vector
          */
-        constexpr const_iterator end() const noexcept
+        [[nodiscard]] constexpr const_iterator end() const noexcept
         {
             return this->container_.get() + this->size_;
         }
@@ -240,7 +243,7 @@ namespace opendsa
          * @brief Read-only iterator pointing to the first element in the
          * %vector
          */
-        constexpr const_iterator cbegin() const noexcept
+        [[nodiscard]] constexpr const_iterator cbegin() const noexcept
         {
             return this->container_.get();
         }
@@ -248,7 +251,7 @@ namespace opendsa
         /**
          * @brief Read-only iterator pointing to the end in the %vector
          */
-        constexpr const_iterator cend() const noexcept
+        [[nodiscard]] constexpr const_iterator cend() const noexcept
         {
             return this->container_.get() + this->size_;
         }
@@ -257,7 +260,7 @@ namespace opendsa
          * @brief Read/write iterator pointing to the first element in the
          * %vector in reversed order.
          */
-        constexpr reverse_iterator rbegin() noexcept
+        [[nodiscard]] constexpr reverse_iterator rbegin() noexcept
         {
             return reverse_iterator(end());
         }
@@ -266,7 +269,7 @@ namespace opendsa
          * @brief Read/write iterator pointing to the end in the %vector in
          * reversed order
          */
-        constexpr reverse_iterator rend() noexcept
+        [[nodiscard]] constexpr reverse_iterator rend() noexcept
         {
             return reverse_iterator(begin());
         }
@@ -275,7 +278,7 @@ namespace opendsa
          * @brief  Read-only iterator pointing to the first element in the
          * %vector in reversed order
          */
-        constexpr const_reverse_iterator rbegin() const noexcept
+        [[nodiscard]] constexpr const_reverse_iterator rbegin() const noexcept
         {
             return const_reverse_iterator(end());
         }
@@ -284,7 +287,7 @@ namespace opendsa
          * @brief  Read-only iterator pointing to the end in the %vector in
          * reversed order
          */
-        constexpr const_reverse_iterator rend() const noexcept
+        [[nodiscard]] constexpr const_reverse_iterator rend() const noexcept
         {
             return const_reverse_iterator(begin());
         }
@@ -293,7 +296,7 @@ namespace opendsa
          * @brief  Read-only iterator pointing to the first element in the
          * %vector in reversed order
          */
-        constexpr const_reverse_iterator crbegin() const noexcept
+        [[nodiscard]] constexpr const_reverse_iterator crbegin() const noexcept
         {
             return const_reverse_iterator(end());
         }
@@ -302,7 +305,7 @@ namespace opendsa
          * @brief  Read-only iterator pointing to the end in the %vector in
          * reversed order
          */
-        constexpr const_reverse_iterator crend() const noexcept
+        [[nodiscard]] constexpr const_reverse_iterator crend() const noexcept
         {
             return const_reverse_iterator(begin());
         }
@@ -442,7 +445,7 @@ namespace opendsa
         template <typename... Args>
         constexpr iterator emplace(const_iterator pos, Args &&...args)
         {
-            const auto n = pos - cbegin();
+            const std::size_t n = pos - cbegin();
 
             if (pos == cend())
                 traits_t::construct(alloc_,
@@ -476,7 +479,7 @@ namespace opendsa
         template <typename... Args>
         constexpr iterator emplace_back(Args &&...args)
         {
-            this->emplace(end(), std::forward<Args>(args)...);
+            return this->emplace(end(), std::forward<Args>(args)...);
         }
 
         /**
@@ -729,6 +732,8 @@ namespace opendsa
         for (auto begin = std::cbegin(x); begin != std::cend(x); ++begin)
             std::cout << *begin << " ";
         std::cout << std::endl;
+
+        return out;
     }
 
     template <std::size_t I, class T>
