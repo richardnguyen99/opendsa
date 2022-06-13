@@ -58,6 +58,7 @@
         "iomanip": "cpp",
         "cinttypes": "cpp",
         "variant": "cpp",
-        "cassert": "cpp"
+        "cassert": "cpp",
+        "bit": "cpp"
     },
 }
