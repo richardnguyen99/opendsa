@@ -119,6 +119,18 @@ namespace opendsa
             _end = _start + n;
         }
 
+        ~vector()
+        {
+            using traits_t = std::allocator_traits<allocator>;
+            const difference_type n = std::distance(_start, _finish);
+
+            for (auto curr = _start; curr != _finish; curr++)
+                traits_t::destroy(_alloc, std::addressof(*curr));
+
+            _finish = _start;
+            traits_t::deallocate(_alloc, _start, n);
+        }
+
         // Capacity
         constexpr size_type size() const noexcept
         {

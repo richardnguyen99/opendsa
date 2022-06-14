@@ -33,6 +33,7 @@
 
 # Local files for testing and running
 main.cpp
+main*
 build/
 __*.h
 *.log
