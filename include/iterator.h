@@ -61,6 +61,44 @@ namespace opendsa
             return normal_iterator(++_current);
         }
 
+        normal_iterator &operator--() noexcept
+        {
+            --_current;
+            return *this;
+        }
+
+        normal_iterator operator--(int) noexcept
+        {
+            return normal_iterator(--_current);
+        }
+
+        reference operator[](difference_type pos) const noexcept
+        {
+            return _current[pos];
+        }
+
+        normal_iterator &operator+=(difference_type n) noexcept
+        {
+            _current += n;
+            return *this;
+        }
+
+        normal_iterator operator+(difference_type n) const noexcept
+        {
+            return normal_iterator(_current + n);
+        }
+
+        normal_iterator &operator-=(difference_type n) noexcept
+        {
+            _current -= n;
+            return *this;
+        }
+
+        normal_iterator operator-(difference_type n) const noexcept
+        {
+            return normal_iterator(_current - n);
+        }
+
         const _Pointer &base() const noexcept { return _current; }
     };
 
@@ -95,6 +133,71 @@ namespace opendsa
     {
         return lhs.base() != rhs.base();
     }
+
+    template <typename _IteratorL, typename _IteratorR, typename _Container>
+    inline bool
+    operator<(const normal_iterator<_IteratorL, _Container> &lhs,
+              const normal_iterator<_IteratorR, _Container> &rhs) noexcept
+    {
+        return lhs.base() < rhs.base();
+    }
+
+    template <typename _Iterator, typename _Container>
+    inline bool
+    operator<(const normal_iterator<_Iterator, _Container> &lhs,
+              const normal_iterator<_Iterator, _Container> &rhs) noexcept
+    {
+        return lhs.base() < rhs.base();
+    }
+
+    template <typename _IteratorL, typename _IteratorR, typename _Container>
+    inline bool
+    operator<=(const normal_iterator<_IteratorL, _Container> &lhs,
+               const normal_iterator<_IteratorR, _Container> &rhs) noexcept
+    {
+        return lhs.base() <= rhs.base();
+    }
+
+    template <typename _Iterator, typename _Container>
+    inline bool
+    operator<=(const normal_iterator<_Iterator, _Container> &lhs,
+               const normal_iterator<_Iterator, _Container> &rhs) noexcept
+    {
+        return lhs.base() <= rhs.base();
+    }
+
+    template <typename _IteratorL, typename _IteratorR, typename _Container>
+    inline bool
+    operator>(const normal_iterator<_IteratorL, _Container> &lhs,
+              const normal_iterator<_IteratorR, _Container> &rhs) noexcept
+    {
+        return lhs.base() > rhs.base();
+    }
+
+    template <typename _Iterator, typename _Container>
+    inline bool
+    operator>(const normal_iterator<_Iterator, _Container> &lhs,
+              const normal_iterator<_Iterator, _Container> &rhs) noexcept
+    {
+        return lhs.base() > rhs.base();
+    }
+
+    template <typename _IteratorL, typename _IteratorR, typename _Container>
+    inline bool
+    operator>=(const normal_iterator<_IteratorL, _Container> &lhs,
+               const normal_iterator<_IteratorR, _Container> &rhs) noexcept
+    {
+        return lhs.base() >= rhs.base();
+    }
+
+    template <typename _Iterator, typename _Container>
+    inline bool
+    operator>=(const normal_iterator<_Iterator, _Container> &lhs,
+               const normal_iterator<_Iterator, _Container> &rhs) noexcept
+    {
+        return lhs.base() >= rhs.base();
+    }
+
 } // namespace opendsa
 
 #endif
