@@ -2,7 +2,7 @@
  * @file vector.h
  * @author Richard Nguyen (richard.ng0616@gmail.com)
  * @brief A C++ class stores contigious elements
- * @version 0.1
+ * @version 0.2
  * @date 2022-06-13
  *
  * @copyright Copyright (c) 2022
@@ -18,19 +18,26 @@
 #include <memory>
 #include <sstream>
 
+#include "iterator.h"
+
 namespace opendsa
 {
     template <typename _Tp>
     class vector
     {
     public:
-        using allocator  = std::allocator<_Tp>;
-        using pointer    = typename std::allocator_traits<allocator>::pointer;
-        using reference  = _Tp &;
-        using value_type = _Tp;
+        using allocator = std::allocator<_Tp>;
+        using pointer   = typename std::allocator_traits<allocator>::pointer;
+        using const_pointer =
+            typename std::allocator_traits<allocator>::const_pointer;
+        using reference       = _Tp &;
+        using value_type      = _Tp;
         using const_reference = const _Tp &;
         using size_type       = std::size_t;
         using difference_type = std::ptrdiff_t;
+
+        using iterator       = normal_iterator<pointer, vector>;
+        using const_iterator = normal_iterator<const_pointer, vector>;
 
         vector() : _alloc(), _start(), _finish(), _end() {}
 
@@ -185,19 +192,36 @@ namespace opendsa
 
         constexpr const_reference front() const { return *(_start); }
 
-        constexpr reference back() { return *(_finish); }
+        constexpr reference back() { return *(_finish - 1); }
 
-        constexpr const_reference back() const { return *(_finish); }
+        constexpr const_reference back() const { return *(_finish - 1); }
 
         constexpr _Tp *data() noexcept { return _start; }
 
         constexpr const _Tp *data() const noexcept { return _start; }
 
+        // Iterator
+
+        constexpr iterator begin() noexcept { return iterator(_start); }
+
+        constexpr iterator end() noexcept { return iterator(_finish); }
+
         // Capacity
+        constexpr bool empty() const noexcept { return (_start == _finish); }
+
+        const size_type max_size() const noexcept
+        {
+            using traits_t = std::allocator_traits<allocator>;
+
+            return traits_t::max_size(_alloc);
+        }
+
         constexpr size_type size() const noexcept
         {
             return size_type(_finish - _start);
         }
+
+        constexpr void reserve(size_type new_cap) {}
 
         constexpr size_type capacity() const noexcept
         {
