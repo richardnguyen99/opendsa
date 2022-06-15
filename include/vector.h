@@ -12,10 +12,10 @@
 #define __OPENDSA_VECTOR_H 1
 
 #include <cstddef>
-#include <initializer_list>
-#include <memory>
-#include <iterator>
 #include <exception>
+#include <initializer_list>
+#include <iterator>
+#include <memory>
 #include <sstream>
 
 namespace opendsa
@@ -145,9 +145,11 @@ namespace opendsa
         {
             const difference_type n = std::distance(_start, _finish);
 
-            if (pos >= n) {
+            if (pos >= n)
+            {
                 std::ostringstream msg;
-                msg << "pos (which is " << pos << ") is out of bound (which is " << n << ").";
+                msg << "pos (which is " << pos << ") is out of bound (which is "
+                    << n << ").";
                 throw std::out_of_range(msg.str());
             }
 
@@ -158,14 +160,15 @@ namespace opendsa
         {
             const difference_type n = std::distance(_start, _finish);
 
-            if (pos >= n) {
+            if (pos >= n)
+            {
                 std::ostringstream msg;
-                msg << "pos (which is " << pos << ") is out of bound (which is " << n << ").";
+                msg << "pos (which is " << pos << ") is out of bound (which is "
+                    << n << ").";
                 throw std::out_of_range(msg.str());
             }
 
             return *(_start + pos);
-
         }
 
         constexpr reference operator[](size_type pos)
@@ -177,6 +180,18 @@ namespace opendsa
         {
             return *(_start + pos);
         }
+
+        constexpr reference front() { return *(_start); }
+
+        constexpr const_reference front() const { return *(_start); }
+
+        constexpr reference back() { return *(_finish); }
+
+        constexpr const_reference back() const { return *(_finish); }
+
+        constexpr _Tp *data() noexcept { return _start; }
+
+        constexpr const _Tp *data() const noexcept { return _start; }
 
         // Capacity
         constexpr size_type size() const noexcept
