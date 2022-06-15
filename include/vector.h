@@ -14,6 +14,9 @@
 #include <cstddef>
 #include <initializer_list>
 #include <memory>
+#include <iterator>
+#include <exception>
+#include <sstream>
 
 namespace opendsa
 {
@@ -21,9 +24,12 @@ namespace opendsa
     class vector
     {
     public:
-        using allocator = std::allocator<_Tp>;
-        using pointer   = typename std::allocator_traits<allocator>::pointer;
-        using size_type = std::size_t;
+        using allocator  = std::allocator<_Tp>;
+        using pointer    = typename std::allocator_traits<allocator>::pointer;
+        using reference  = _Tp &;
+        using value_type = _Tp;
+        using const_reference = const _Tp &;
+        using size_type       = std::size_t;
         using difference_type = std::ptrdiff_t;
 
         vector() : _alloc(), _start(), _finish(), _end() {}
@@ -121,20 +127,66 @@ namespace opendsa
 
         ~vector()
         {
-            using traits_t = std::allocator_traits<allocator>;
+            using traits_t          = std::allocator_traits<allocator>;
             const difference_type n = std::distance(_start, _finish);
 
-            for (auto curr = _start; curr != _finish; curr++)
-                traits_t::destroy(_alloc, std::addressof(*curr));
+            if (n)
+            {
+                for (auto curr = _start; curr != _finish; curr++)
+                    traits_t::destroy(_alloc, std::addressof(*curr));
 
-            _finish = _start;
-            traits_t::deallocate(_alloc, _start, n);
+                _finish = _start;
+                traits_t::deallocate(_alloc, _start, n);
+            }
+        }
+
+        // Access
+        constexpr reference at(size_type pos)
+        {
+            const difference_type n = std::distance(_start, _finish);
+
+            if (pos >= n) {
+                std::ostringstream msg;
+                msg << "pos (which is " << pos << ") is out of bound (which is " << n << ").";
+                throw std::out_of_range(msg.str());
+            }
+
+            return *(_start + pos);
+        }
+
+        constexpr const_reference at(size_type pos) const
+        {
+            const difference_type n = std::distance(_start, _finish);
+
+            if (pos >= n) {
+                std::ostringstream msg;
+                msg << "pos (which is " << pos << ") is out of bound (which is " << n << ").";
+                throw std::out_of_range(msg.str());
+            }
+
+            return *(_start + pos);
+
+        }
+
+        constexpr reference operator[](size_type pos)
+        {
+            return *(_start + pos);
+        }
+
+        constexpr const_reference operator[](size_type pos) const
+        {
+            return *(_start + pos);
         }
 
         // Capacity
         constexpr size_type size() const noexcept
         {
             return size_type(_finish - _start);
+        }
+
+        constexpr size_type capacity() const noexcept
+        {
+            return size_type(_end - _start);
         }
 
         // Modifiers
