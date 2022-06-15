@@ -50,8 +50,51 @@ namespace opendsa
 
         pointer operator->() const noexcept { return _current; }
 
+        normal_iterator &operator++() noexcept
+        {
+            ++_current;
+            return *this;
+        }
+
+        normal_iterator operator++(int) noexcept
+        {
+            return normal_iterator(++_current);
+        }
+
         const _Pointer &base() const noexcept { return _current; }
     };
+
+    template <typename _IteratorL, typename _IteratorR, typename _Container>
+    inline bool
+    operator==(const normal_iterator<_IteratorL, _Container> &lhs,
+               const normal_iterator<_IteratorR, _Container> &rhs) noexcept
+    {
+        return lhs.base() == rhs.base();
+    }
+
+    template <typename _Iterator, typename _Container>
+    inline bool
+    operator==(const normal_iterator<_Iterator, _Container> &lhs,
+               const normal_iterator<_Iterator, _Container> &rhs) noexcept
+    {
+        return lhs.base() == rhs.base();
+    }
+
+    template <typename _IteratorL, typename _IteratorR, typename _Container>
+    inline bool
+    operator!=(const normal_iterator<_IteratorL, _Container> &lhs,
+               const normal_iterator<_IteratorR, _Container> &rhs) noexcept
+    {
+        return lhs.base() != rhs.base();
+    }
+
+    template <typename _Iterator, typename _Container>
+    inline bool
+    operator!=(const normal_iterator<_Iterator, _Container> &lhs,
+               const normal_iterator<_Iterator, _Container> &rhs) noexcept
+    {
+        return lhs.base() != rhs.base();
+    }
 } // namespace opendsa
 
 #endif
