@@ -326,8 +326,9 @@ namespace opendsa
 
         constexpr iterator insert(const_iterator pos, const _Tp &value)
         {
-            using traits_t    = std::allocator_traits<allocator>;
-            const size_type n = pos - begin();
+            using traits_t          = std::allocator_traits<allocator>;
+            const size_type n       = pos - begin();
+            const auto      new_pos = begin() + (pos - cbegin());
 
             if (_finish != _end)
             {
@@ -337,61 +338,32 @@ namespace opendsa
                     ++_finish;
                 }
                 else
-                {
-                    const auto new_pos = begin() + (pos - cbegin());
-                    _Tp        copy    = _Tp(value);
-
-                    traits_t::construct(_alloc, std::addressof(*_finish),
-                                        std::move(*(_finish - 1)));
-                    ++_finish;
-
-                    pointer first  = new_pos.base();
-                    pointer last   = _finish - 2;
-                    pointer d_last = _finish - 1;
-
-                    while (first != last)
-                        *(--d_last) = std::move(*(--last));
-
-                    *new_pos = copy;
-                }
+                    _insert_helper(new_pos, value);
             }
             else
+                _insert_realloc(new_pos, value);
+
+            return iterator(_start + n);
+        }
+
+        constexpr iterator insert(const_iterator pos, _Tp &&value)
+        {
+            using traits_t          = std::allocator_traits<allocator>;
+            const size_type n       = pos - begin();
+            const auto      new_pos = begin() + (pos - cbegin());
+
+            if (_finish != _end)
             {
-                const size_type len        = _check_len(1, "vector::insert");
-                pointer         old_start  = this->_start;
-                pointer         old_finish = this->_finish;
-                pointer         new_start  = traits_t::allocate(_alloc, len);
-                pointer         new_finish = pointer();
-
-                try
+                if (pos == cend())
                 {
-                    traits_t::construct(_alloc, new_start + n, value);
-                    new_finish = std::uninitialized_move(
-                        old_start, const_cast<pointer>(pos.base()), new_start);
-                    ++new_finish;
-                    new_finish = std::uninitialized_move(
-                        const_cast<pointer>(pos.base()), old_finish,
-                        new_finish);
+                    traits_t::construct(_alloc, _finish, std::move(value));
+                    ++_finish;
                 }
-                catch (...)
-                {
-                    if (!new_finish)
-                        traits_t::destroy(_alloc, new_start + n);
-                    else
-                        for (auto curr = new_start; curr != new_finish; curr++)
-                            traits_t::destroy(_alloc, std::addressof(*curr));
-                    traits_t::deallocate(_alloc, new_start, len);
-                }
-
-                for (pointer curr = old_start; curr != old_finish; curr++)
-                    traits_t::destroy(_alloc, std::addressof(*curr));
-
-                traits_t::deallocate(_alloc, old_start, _end - old_start);
-
-                this->_start  = new_start;
-                this->_finish = new_finish;
-                this->_end    = new_start + len;
+                else
+                    _insert_helper(new_pos, std::move(value));
             }
+            else
+                _insert_realloc(new_pos, std::move(value));
 
             return iterator(_start + n);
         }
@@ -410,6 +382,67 @@ namespace opendsa
             const size_type len = size() + std::max(size(), n);
 
             return (len < size() || len > max_size()) ? max_size() : len;
+        }
+
+        template <typename Arg>
+        void _insert_helper(iterator pos, Arg &&arg)
+        {
+            using traits_t     = std::allocator_traits<allocator>;
+            const auto new_pos = begin() + (pos - cbegin());
+
+            traits_t::construct(_alloc, std::addressof(*_finish),
+                                std::move(*(_finish - 1)));
+            ++_finish;
+
+            pointer first  = new_pos.base();
+            pointer last   = _finish - 2;
+            pointer d_last = _finish - 1;
+
+            while (first != last)
+                *(--d_last) = std::move(*(--last));
+
+            *new_pos = std::forward<Arg>(arg);
+        }
+
+        template <typename... _Arg>
+        void _insert_realloc(iterator pos, _Arg &&...arg)
+        {
+            using traits_t             = std::allocator_traits<allocator>;
+            const size_type len        = _check_len(1, "vector::insert");
+            pointer         old_start  = this->_start;
+            pointer         old_finish = this->_finish;
+            pointer         new_start  = traits_t::allocate(_alloc, len);
+            pointer         new_finish = pointer();
+            const size_type n          = pos - begin();
+
+            try
+            {
+                traits_t::construct(_alloc, new_start + n,
+                                    std::forward<_Arg>(arg)...);
+                new_finish
+                    = std::uninitialized_move(old_start, pos.base(), new_start);
+                ++new_finish;
+                new_finish = std::uninitialized_move(pos.base(), old_finish,
+                                                     new_finish);
+            }
+            catch (...)
+            {
+                if (!new_finish)
+                    traits_t::destroy(_alloc, new_start + n);
+                else
+                    for (auto curr = new_start; curr != new_finish; curr++)
+                        traits_t::destroy(_alloc, std::addressof(*curr));
+                traits_t::deallocate(_alloc, new_start, len);
+            }
+
+            for (pointer curr = old_start; curr != old_finish; curr++)
+                traits_t::destroy(_alloc, std::addressof(*curr));
+
+            traits_t::deallocate(_alloc, old_start, _end - old_start);
+
+            this->_start  = new_start;
+            this->_finish = new_finish;
+            this->_end    = new_start + len;
         }
     };
 } // namespace opendsa
