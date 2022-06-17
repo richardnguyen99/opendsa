@@ -198,6 +198,31 @@ namespace opendsa
         return lhs.base() >= rhs.base();
     }
 
+    template <typename _IteratorL, typename _IteratorR, typename _Container>
+    inline auto
+    operator-(const normal_iterator<_IteratorL, _Container> &lhs,
+              const normal_iterator<_IteratorR, _Container> &rhs) noexcept
+        -> decltype(lhs.base() - rhs.base())
+    {
+        return lhs.base() - rhs.base();
+    }
+
+    template <typename _Iterator, typename _Container>
+    inline typename normal_iterator<_Iterator, _Container>::difference_type
+    operator-(const normal_iterator<_Iterator, _Container> &lhs,
+              const normal_iterator<_Iterator, _Container> &rhs) noexcept
+    {
+        return lhs.base() - rhs.base();
+    }
+
+    template <typename _Iterator, typename _Container>
+    inline normal_iterator<_Iterator, _Container> operator+(
+        typename normal_iterator<_Iterator, _Container>::difference_type n,
+        const normal_iterator<_Iterator, _Container>                    &i)
+    {
+        return normal_iterator<_Iterator, _Container>(i.base() + n);
+    }
+
 } // namespace opendsa
 
 #endif

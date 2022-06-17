@@ -37,3 +37,5 @@ main*
 build/
 __*.h
 *.log
+
+.fake

@@ -281,10 +281,11 @@ namespace opendsa
         {
             if (this->capacity() > this->size())
             {
-                using traits_t = std::allocator_traits<allocator>;
+                using traits_t          = std::allocator_traits<allocator>;
+                const size_type new_cap = this->size();
 
-                pointer new_start = traits_t::allocate(_alloc, this->size());
-                for (size_type i = 0; i < this->size(); i++)
+                pointer new_start = traits_t::allocate(_alloc, new_cap);
+                for (size_type i = 0; i < new_cap; i++)
                 {
                     traits_t::construct(_alloc,
                                         std::addressof(*(new_start + i)),
@@ -297,8 +298,8 @@ namespace opendsa
                 traits_t::deallocate(_alloc, _start, _end - _start);
 
                 _start  = new_start;
-                _finish = new_start + this->size();
-                _end    = _finish;
+                _finish = new_start + new_cap;
+                _end    = _start + new_cap;
             }
         }
 
@@ -323,11 +324,93 @@ namespace opendsa
             }
         }
 
+        constexpr iterator insert(const_iterator pos, const _Tp &value)
+        {
+            using traits_t    = std::allocator_traits<allocator>;
+            const size_type n = pos - begin();
+
+            if (_finish != _end)
+            {
+                if (pos == cend())
+                {
+                    traits_t::construct(_alloc, _finish, value);
+                    ++_finish;
+                }
+                else
+                {
+                    const auto new_pos = begin() + (pos - cbegin());
+                    _Tp        copy    = _Tp(value);
+
+                    traits_t::construct(_alloc, std::addressof(*_finish),
+                                        std::move(*(_finish - 1)));
+                    ++_finish;
+
+                    pointer first  = new_pos.base();
+                    pointer last   = _finish - 2;
+                    pointer d_last = _finish - 1;
+
+                    while (first != last)
+                        *(--d_last) = std::move(*(--last));
+
+                    *new_pos = copy;
+                }
+            }
+            else
+            {
+                const size_type len        = _check_len(1, "vector::insert");
+                pointer         old_start  = this->_start;
+                pointer         old_finish = this->_finish;
+                pointer         new_start  = traits_t::allocate(_alloc, len);
+                pointer         new_finish = pointer();
+
+                try
+                {
+                    traits_t::construct(_alloc, new_start + n, value);
+                    new_finish = std::uninitialized_move(
+                        old_start, const_cast<pointer>(pos.base()), new_start);
+                    ++new_finish;
+                    new_finish = std::uninitialized_move(
+                        const_cast<pointer>(pos.base()), old_finish,
+                        new_finish);
+                }
+                catch (...)
+                {
+                    if (!new_finish)
+                        traits_t::destroy(_alloc, new_start + n);
+                    else
+                        for (auto curr = new_start; curr != new_finish; curr++)
+                            traits_t::destroy(_alloc, std::addressof(*curr));
+                    traits_t::deallocate(_alloc, new_start, len);
+                }
+
+                for (pointer curr = old_start; curr != old_finish; curr++)
+                    traits_t::destroy(_alloc, std::addressof(*curr));
+
+                traits_t::deallocate(_alloc, old_start, _end - old_start);
+
+                this->_start  = new_start;
+                this->_finish = new_finish;
+                this->_end    = new_start + len;
+            }
+
+            return iterator(_start + n);
+        }
+
     private:
         allocator _alloc;
         pointer   _start;
         pointer   _finish;
         pointer   _end;
+
+        size_type _check_len(size_type n, const char *s) const
+        {
+            if (max_size() - size() < n)
+                std::__throw_length_error("New size exceeds max_size()");
+
+            const size_type len = size() + std::max(size(), n);
+
+            return (len < size() || len > max_size()) ? max_size() : len;
+        }
     };
 } // namespace opendsa
 
