@@ -253,7 +253,29 @@ namespace opendsa
             return size_type(_finish - _start);
         }
 
-        constexpr void reserve(size_type new_cap) {}
+        constexpr void reserve(size_type new_cap)
+        {
+            if (this->capacity() < new_cap)
+            {
+                using traits_t           = std::allocator_traits<allocator>;
+                const size_type old_size = size();
+
+                pointer new_start = traits_t::allocate(_alloc, new_cap);
+                for (size_type i = 0; i < new_cap; i++)
+                    traits_t::construct(_alloc,
+                                        std::addressof(*(new_start + i)),
+                                        *(_start + i));
+
+                for (pointer curr = _start; curr != _finish; curr++)
+                    traits_t::destroy(_alloc, std::addressof(*curr));
+
+                traits_t::deallocate(_alloc, _start, _end - _start);
+
+                _start  = new_start;
+                _finish = new_start + old_size;
+                _end    = _start + new_cap;
+            }
+        }
 
         constexpr size_type capacity() const noexcept
         {

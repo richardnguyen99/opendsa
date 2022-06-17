@@ -58,7 +58,7 @@ namespace opendsa
 
         normal_iterator operator++(int) noexcept
         {
-            return normal_iterator(++_current);
+            return normal_iterator(_current++);
         }
 
         normal_iterator &operator--() noexcept
@@ -69,7 +69,7 @@ namespace opendsa
 
         normal_iterator operator--(int) noexcept
         {
-            return normal_iterator(--_current);
+            return normal_iterator(_current--);
         }
 
         reference operator[](difference_type pos) const noexcept
