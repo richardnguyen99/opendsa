@@ -100,23 +100,13 @@ namespace opendsa
 
         constexpr vector(vector &&other)
         {
-            using traits_t = std::allocator_traits<allocator>;
+            this->_start  = other._start;
+            this->_finish = other._finish;
+            this->_end    = other._end;
 
-            const difference_type n
-                = std::distance(other._start, other._finish);
-            _start  = traits_t::allocate(_alloc, n);
-            _finish = _start;
-
-            for (auto curr = other._start; curr != other._finish; curr++)
-            {
-                traits_t::construct(_alloc, std::addressof(*_finish),
-                                    std::move(*curr));
-                _finish++;
-            }
-
-            other.clear();
-
-            _end = _start + n;
+            other._start  = pointer();
+            other._finish = pointer();
+            other._end    = pointer();
         }
 
         constexpr vector(std::initializer_list<_Tp> init)
@@ -225,7 +215,7 @@ namespace opendsa
 
         constexpr const_iterator cend() const noexcept
         {
-            return const_iterator(_end);
+            return const_iterator(_finish);
         }
 
         constexpr reverse_iterator rend() noexcept
@@ -368,6 +358,40 @@ namespace opendsa
             return iterator(_start + n);
         }
 
+        const iterator insert(const_iterator pos, size_type n,
+                              const value_type &value)
+        {
+            difference_type offset = pos - cbegin();
+
+            _insert_fill(begin() + offset, n, value);
+
+            return begin() + offset;
+        }
+
+        template <typename _InputIter,
+                  typename = std::_RequireInputIter<_InputIter>>
+        constexpr iterator insert(const_iterator pos, _InputIter first,
+                                  _InputIter last)
+        {
+            difference_type offset = pos - cbegin();
+
+            _insert_range(begin() + offset, first, last,
+                          std::forward_iterator_tag());
+
+            return begin() + offset;
+        }
+
+        constexpr iterator insert(const_iterator                    pos,
+                                  std::initializer_list<value_type> list)
+        {
+            difference_type offset = pos - cbegin();
+
+            _insert_range(begin() + offset, list.begin(), list.end(),
+                          std::forward_iterator_tag());
+
+            return begin() + offset;
+        }
+
     private:
         allocator _alloc;
         pointer   _start;
@@ -443,6 +467,148 @@ namespace opendsa
             this->_start  = new_start;
             this->_finish = new_finish;
             this->_end    = new_start + len;
+        }
+
+        void _insert_fill(iterator pos, size_type n, const value_type &value)
+        {
+            if (n == 0)
+                return;
+
+            if (size_type(_end - _finish) >= n)
+            {
+                const size_type elems_after_pos = this->end() - pos;
+                pointer         old_finish(_finish);
+                _Tp             copy(value);
+
+                if (elems_after_pos > n)
+                {
+                    std::uninitialized_move(_finish - n, _finish, _finish);
+                    _finish += n;
+
+                    pointer o_first = pos.base();
+                    pointer o_last  = old_finish - n;
+                    pointer d_last  = old_finish;
+
+                    while (o_first != o_last)
+                        *(--d_last) = std::move(*(--o_last));
+
+                    std::fill(pos.base(), pos.base() + n, copy);
+                }
+                else
+                {
+                    _finish = std::uninitialized_fill_n(
+                        _finish, n - elems_after_pos, copy);
+                    std::uninitialized_move(pos.base(), old_finish, _finish);
+                    _finish += elems_after_pos;
+                    std::fill(pos.base(), old_finish, copy);
+                }
+            }
+            else
+            {
+                using traits_t      = std::allocator_traits<allocator>;
+                const size_type len = _check_len(n, "vector::_insert_range");
+                pointer         new_start  = traits_t::allocate(_alloc, len);
+                pointer         new_finish = new_start;
+
+                try
+                {
+                    new_finish = std::uninitialized_move(this->_start,
+                                                         pos.base(), new_start);
+                    std::uninitialized_fill_n(new_finish, n, value);
+                    new_finish += n;
+                    new_finish = std::uninitialized_move(pos.base(), _finish,
+                                                         new_finish);
+                }
+                catch (...)
+                {
+                    for (pointer curr = new_start; curr != new_finish; curr++)
+                        traits_t::destroy(_alloc, std::addressof(*curr));
+
+                    traits_t::deallocate(_alloc, new_start, len);
+                }
+
+                for (pointer curr = _start; curr != _finish; curr++)
+                    traits_t::destroy(_alloc, std::addressof(*curr));
+
+                traits_t::deallocate(_alloc, _start, _end - _start);
+
+                this->_start  = new_start;
+                this->_finish = new_finish;
+                this->_end    = new_start + len;
+            }
+        }
+
+        template <typename _ForwardIterator>
+        void _insert_range(iterator pos, _ForwardIterator first,
+                           _ForwardIterator last, std::forward_iterator_tag)
+        {
+            if (first == last)
+                return;
+
+            const size_type n = std::distance(first, last);
+            if (size_type(_end - _finish) >= n)
+            {
+                const size_type elems_after_pos = this->end() - pos;
+                pointer         old_finish(_finish);
+
+                if (elems_after_pos > n)
+                {
+                    std::uninitialized_move(_finish - n, _finish, _finish);
+                    _finish += n;
+
+                    pointer o_first = pos.base();
+                    pointer o_last  = old_finish - n;
+                    pointer d_last  = old_finish;
+
+                    while (o_first != o_last)
+                        *(--d_last) = std::move(*(--o_last));
+
+                    std::copy(first, last, pos);
+                }
+                else
+                {
+                    _ForwardIterator mid = first;
+                    std::advance(mid, elems_after_pos);
+                    std::uninitialized_copy(mid, last, _finish);
+                    _finish += n - elems_after_pos;
+                    std::uninitialized_move(pos.base(), old_finish, _finish);
+                    _finish += elems_after_pos;
+                    std::copy(first, mid, pos);
+                }
+            }
+            else
+            {
+                using traits_t      = std::allocator_traits<allocator>;
+                const size_type len = _check_len(n, "vector::_insert_range");
+                pointer         new_start  = traits_t::allocate(_alloc, len);
+                pointer         new_finish = new_start;
+
+                try
+                {
+                    new_finish = std::uninitialized_move(this->_start,
+                                                         pos.base(), new_start);
+                    new_finish
+                        = std::uninitialized_copy(first, last, new_finish);
+                    new_finish = std::uninitialized_move(pos.base(), _finish,
+                                                         new_finish);
+                }
+                catch (...)
+                {
+                    for (pointer curr = new_start; curr != new_finish; curr++)
+                        traits_t::destroy(_alloc, std::addressof(*curr));
+
+                    traits_t::deallocate(_alloc, new_start, len);
+                }
+
+                for (pointer curr = _start; curr != _finish; curr++)
+                    traits_t::destroy(_alloc, std::addressof(*curr));
+
+                traits_t::deallocate(_alloc, _start, _end - _start);
+
+                this->_start  = new_start;
+                this->_finish = new_finish;
+                this->_end    = new_start + len;
+            }
         }
     };
 } // namespace opendsa
