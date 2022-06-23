@@ -85,7 +85,7 @@ namespace opendsa
             using traits_t = std::allocator_traits<allocator>;
 
             const difference_type n
-                = std::distance(other._start, other._finish);
+                = std::distance(other._start, other._end);
             _start  = traits_t::allocate(_alloc, n);
             _finish = _start;
 
