@@ -475,6 +475,11 @@ namespace opendsa
             return normal_first;
         }
 
+        constexpr void pop_back()
+        {
+            this->erase(cend() - 1);
+        }
+
         constexpr void resize(size_type count, const value_type &value)
         {
             if (count > size())
@@ -499,6 +504,21 @@ namespace opendsa
         constexpr void resize(size_type count)
         {
             this->resize(count, value_type());
+        }
+
+        constexpr void swap(vector& other)
+        {
+            pointer _tmp_start = other._start;
+            pointer _tmp_finish = other._finish;
+            pointer _tmp_end = other._end;
+
+            other._start = this->_start;
+            other._finish = this->_finish;
+            other._end = this->_end;
+
+            this->_start = _tmp_start;
+            this->_finish = _tmp_finish;
+            this->_end = _tmp_end;
         }
 
     private:
