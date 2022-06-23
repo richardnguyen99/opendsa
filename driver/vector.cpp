@@ -163,7 +163,7 @@ int main(int argc, const char **argv)
     std::cout << "\n";
     std::cout << "vec5 size: " << vec5.size() << "\n";
     std::cout << "vec5 capacity: " << vec5.capacity() << "\n";
-		
+
 		vec2.insert(vec2.cend(), 3, 200);
     std::for_each(std::begin(vec2), std::end(vec2),
                   [](const int &e) { std::cout << e << " "; });
@@ -175,6 +175,87 @@ int main(int argc, const char **argv)
     std::cout << "\n";
     std::cout << "vec5 size: " << vec5.size() << "\n";
     std::cout << "vec5 capacity: " << vec5.capacity() << "\n";
+
+    std::cout << "Emplace 3 into vec5 at cend()\n";
+    std::cout << "Emplace 4 into vec5 at back\n";
+    std::cout << "Push back 5 into vec5\n";
+    vec5.emplace(vec5.cend(), 3);
+    vec5.emplace_back(4);
+    vec5.push_back(5);
+    std::for_each(std::begin(vec5), std::end(vec5),
+                  [](const int &e) { std::cout << e << " "; });
+    std::cout << "\n";
+    std::cout << "vec5 size: " << vec5.size() << "\n";
+    std::cout << "vec5 capacity: " << vec5.capacity() << "\n";
+
+    std::cout << "Erase element in vec5 at cend()\n";
+    std::cout << "Erase elements in vec5 at cend() - 1 to cend()\n";
+    vec5.erase(vec5.cend());
+    vec5.erase(vec5.cend() - 2, vec5.cend());
+    std::for_each(std::begin(vec5), std::end(vec5),
+                  [](const int &e) { std::cout << e << " "; });
+    std::cout << "\n";
+    std::cout << "vec5 size: " << vec5.size() << "\n";
+    std::cout << "vec5 capacity: " << vec5.capacity() << "\n";
+
+    std::cout << "Clear vec5\n";
+    vec5.clear();
+    std::for_each(std::begin(vec5), std::end(vec5),
+                  [](const int &e) { std::cout << e << " "; });
+    std::cout << "\n";
+    std::cout << "vec5 size: " << vec5.size() << "\n";
+    std::cout << "vec5 capacity: " << vec5.capacity() << "\n";
+
+    std::cout << "Resize vec5 to size of 8\n";
+    vec5.resize(8);
+    std::for_each(std::begin(vec5), std::end(vec5),
+                  [](const int &e) { std::cout << e << " "; });
+    std::cout << "\n";
+    std::cout << "vec5 size: " << vec5.size() << "\n";
+    std::cout << "vec5 capacity: " << vec5.capacity() << "\n";
+
+    std::cout << "Resize vec5 to size of 16 with default value = 3\n";
+    vec5.resize(16, 3);
+    std::for_each(std::begin(vec5), std::end(vec5),
+                  [](const int &e) { std::cout << e << " "; });
+    std::cout << "\n";
+    std::cout << "vec5 size: " << vec5.size() << "\n";
+    std::cout << "vec5 capacity: " << vec5.capacity() << "\n";
+
+    std::cout << "Swap content of vec2 and vec5\n";
+    vec5.swap(vec2);
+
+    std::for_each(std::begin(vec2), std::end(vec2),
+                  [](const int &e) { std::cout << e << " "; });
+    std::cout << "\n";
+    std::cout << "vec2 size: " << vec2.size() << "\n";
+    std::cout << "vec2 capacity: " << vec2.capacity() << "\n";
+    std::for_each(std::begin(vec5), std::end(vec5),
+                  [](const int &e) { std::cout << e << " "; });
+    std::cout << "\n";
+    std::cout << "vec5 size: " << vec5.size() << "\n";
+    std::cout << "vec5 capacity: " << vec5.capacity() << "\n";
+
+    vec2.insert(vec2.cend(), 3, 1000);
+    std::cout << "Insert 1000 three times to vec2 at cend()\n";
+    std::for_each(std::begin(vec2), std::end(vec2),
+                  [](const int &e) { std::cout << e << " "; });
+    std::cout << "\n";
+    std::cout << "vec2 size: " << vec2.size() << "\n";
+    std::cout << "vec2 capacity: " << vec2.capacity() << "\n";
+    std::for_each(std::begin(vec5), std::end(vec5),
+                  [](const int &e) { std::cout << e << " "; });
+    std::cout << "\n";
+    std::cout << "vec5 size: " << vec5.size() << "\n";
+    std::cout << "vec5 capacity: " << vec5.capacity() << "\n";
+
+    std::cout << "Pop back vec2\n";
+    vec2.pop_back();
+    std::for_each(std::begin(vec2), std::end(vec2),
+                  [](const int &e) { std::cout << e << " "; });
+    std::cout << "\n";
+    std::cout << "vec2 size: " << vec2.size() << "\n";
+    std::cout << "vec2 capacity: " << vec2.capacity() << "\n";
 
     return 0;
 }
