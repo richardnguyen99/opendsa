@@ -469,11 +469,36 @@ namespace opendsa
                         traits_t::destroy(_alloc, std::addressof(*curr));
 
                     _finish = erase_start;
-                    //traits_t::deallocate(_alloc, erase_start, n);
                 }
             }
 
             return normal_first;
+        }
+
+        constexpr void resize(size_type count, const value_type &value)
+        {
+            if (count > size())
+            {
+                _insert_fill(end(), count - size(), value);
+            }
+            else
+            {
+                using traits_t = std::allocator_traits<allocator>;
+                pointer               erase_start = _start + count;
+                const difference_type n = std::distance(erase_start, _finish);
+                if (n)
+                {
+                    for (auto curr = erase_start; curr != _finish; curr++)
+                        traits_t::destroy(_alloc, std::addressof(*curr));
+
+                    _finish = erase_start;
+                }
+            }
+        }
+
+        constexpr void resize(size_type count)
+        {
+            this->resize(count, value_type());
         }
 
     private:
