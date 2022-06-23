@@ -11,13 +11,13 @@
 #ifndef __OPENDSA_VECTOR_H
 #define __OPENDSA_VECTOR_H 1
 
+#include <algorithm>
 #include <cstddef>
 #include <exception>
 #include <initializer_list>
 #include <iterator>
 #include <memory>
 #include <sstream>
-#include <algorithm>
 
 #include "iterator.h"
 
@@ -85,10 +85,9 @@ namespace opendsa
         {
             using traits_t = std::allocator_traits<allocator>;
 
-            const difference_type n
-                = std::distance(other._start, other._end);
-            _start  = traits_t::allocate(_alloc, n);
-            _finish = _start;
+            const difference_type n = std::distance(other._start, other._end);
+            _start                  = traits_t::allocate(_alloc, n);
+            _finish                 = _start;
 
             for (auto curr = other._start; curr != other._finish; curr++)
             {
@@ -394,7 +393,7 @@ namespace opendsa
         }
 
         template <typename... Args>
-        constexpr iterator emplace(const_iterator pos, Args&&... args)
+        constexpr iterator emplace(const_iterator pos, Args &&...args)
         {
             using traits_t          = std::allocator_traits<allocator>;
             const size_type n       = pos - begin();
@@ -404,7 +403,8 @@ namespace opendsa
             {
                 if (pos == cend())
                 {
-                    traits_t::construct(_alloc, _finish, std::forward<Args>(args)...);
+                    traits_t::construct(_alloc, _finish,
+                                        std::forward<Args>(args)...);
                     ++_finish;
                 }
                 else
@@ -414,6 +414,29 @@ namespace opendsa
                 _insert_realloc(new_pos, std::forward<Args>(args)...);
 
             return iterator(_start + n);
+        }
+
+        template <typename... Args>
+        constexpr iterator emplace_back(Args &&...args)
+        {
+            return emplace(cend(), std::forward<Args>(args)...);
+        }
+
+        constexpr void push_back(const value_type &value)
+        {
+            using traits_t = std::allocator_traits<allocator>;
+            if (_finish != _end)
+            {
+                traits_t::construct(_alloc, _finish, value);
+                ++_finish;
+            }
+            else
+                _insert_realloc(end(), value);
+        }
+
+        constexpr void push_back(_Tp &&value)
+        {
+            emplace_back(std::move(value));
         }
 
     private:
