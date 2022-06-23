@@ -129,14 +129,11 @@ namespace opendsa
             using traits_t          = std::allocator_traits<allocator>;
             const difference_type n = std::distance(_start, _finish);
 
-            if (n)
-            {
-                for (auto curr = _start; curr != _finish; curr++)
-                    traits_t::destroy(_alloc, std::addressof(*curr));
+            for (auto curr = _start; curr != _finish; curr++)
+                traits_t::destroy(_alloc, std::addressof(*curr));
 
-                _finish = _start;
-                traits_t::deallocate(_alloc, _start, n);
-            }
+            _finish = _start;
+            traits_t::deallocate(_alloc, _start, n);
         }
 
         // Access
@@ -310,7 +307,6 @@ namespace opendsa
                     traits_t::destroy(_alloc, std::addressof(*curr));
 
                 _finish = _start;
-                traits_t::deallocate(_alloc, _start, n);
             }
         }
 
@@ -437,6 +433,47 @@ namespace opendsa
         constexpr void push_back(_Tp &&value)
         {
             emplace_back(std::move(value));
+        }
+
+        constexpr iterator erase(const_iterator pos)
+        {
+            using traits_t = std::allocator_traits<allocator>;
+
+            iterator normal_pos = begin() + (pos - cbegin());
+
+            if (normal_pos + 1 != end())
+                std::move(normal_pos + 1, end(), normal_pos);
+
+            _finish--;
+
+            return normal_pos;
+        }
+
+        constexpr iterator erase(const_iterator first, const_iterator last)
+        {
+            using traits_t = std::allocator_traits<allocator>;
+
+            iterator normal_first = begin() + (first - cbegin());
+            iterator normal_last  = begin() + (last - cbegin());
+
+            if (normal_first != normal_last)
+            {
+                if (normal_last != end())
+                    std::move(normal_last, end(), normal_first);
+
+                pointer erase_start     = normal_first.base() + (cend() - last);
+                const difference_type n = std::distance(erase_start, _finish);
+                if (n)
+                {
+                    for (auto curr = erase_start; curr != _finish; curr++)
+                        traits_t::destroy(_alloc, std::addressof(*curr));
+
+                    _finish = erase_start;
+                    //traits_t::deallocate(_alloc, erase_start, n);
+                }
+            }
+
+            return normal_first;
         }
 
     private:
