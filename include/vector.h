@@ -17,6 +17,7 @@
 #include <iterator>
 #include <memory>
 #include <sstream>
+#include <algorithm>
 
 #include "iterator.h"
 
@@ -390,6 +391,29 @@ namespace opendsa
                           std::forward_iterator_tag());
 
             return begin() + offset;
+        }
+
+        template <typename... Args>
+        constexpr iterator emplace(const_iterator pos, Args&&... args)
+        {
+            using traits_t          = std::allocator_traits<allocator>;
+            const size_type n       = pos - begin();
+            const auto      new_pos = begin() + (pos - cbegin());
+
+            if (_finish != _end)
+            {
+                if (pos == cend())
+                {
+                    traits_t::construct(_alloc, _finish, std::forward<Args>(args)...);
+                    ++_finish;
+                }
+                else
+                    _insert_helper(new_pos, std::forward<Args>(args)...);
+            }
+            else
+                _insert_realloc(new_pos, std::forward<Args>(args)...);
+
+            return iterator(_start + n);
         }
 
     private:
