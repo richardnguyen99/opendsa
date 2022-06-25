@@ -39,10 +39,10 @@ namespace opendsa
         normal_iterator(
             const normal_iterator<
                 _Iter, typename std::enable_if<
-                           (std::__are_same<
+                           (std::is_same<
                                _Iter, typename _Container::pointer>::__value),
                            _Container>::__type> &_i) noexcept
-            : _current(_i.base())
+            : _current(_i._current)
         {
         }
 
