@@ -80,6 +80,25 @@ namespace opendsa
 
         pointer operator->() const noexcept { return _curr; }
 
+        deque_iterator &operator++() noexcept
+        {
+            ++_curr;
+            if (_curr == _last)
+            {
+                this->set_node(_map + 1);
+                _curr = _first;
+            }
+
+            return *this;
+        }
+
+        deque_iterator operator++(int) noexcept
+        {
+            deque_iterator tmp = *this;
+            ++(*this);
+            return tmp;
+        }
+
         void set_node(map_pointer new_node) noexcept
         {
             this->_map   = new_node;
@@ -87,6 +106,20 @@ namespace opendsa
             this->_last  = this->_first + difference_type(get_node_elements());
         }
     };
+
+    template <typename _Tp, typename _Ref, typename _Ptr>
+    inline bool operator==(const deque_iterator<_Tp, _Ref, _Ptr> &lhs,
+                           const deque_iterator<_Tp, _Ref, _Ptr> &rhs) noexcept
+    {
+        return rhs._curr == lhs._curr;
+    }
+
+    template <typename _Tp, typename _Ref, typename _Ptr>
+    inline bool operator!=(const deque_iterator<_Tp, _Ref, _Ptr> &lhs,
+                           const deque_iterator<_Tp, _Ref, _Ptr> &rhs) noexcept
+    {
+        return rhs._curr != lhs._curr;
+    }
 
     template <typename _Tp, typename _Alloc = std::allocator<_Tp>>
     class deque
@@ -115,11 +148,29 @@ namespace opendsa
         using size_type       = std::size_t;
         using difference_type = std::ptrdiff_t;
 
+        /**
+         * @brief Creates an empty %deque
+         */
         deque()
             : _map(), _map_size(0), _start(), _finish(), _alloc(), _map_alloc()
         {
             _initialize_map(0);
         }
+
+        explicit deque(size_type n)
+            : _map(), _map_size(n), _start(), _finish(), _alloc(), _map_alloc()
+        {
+            _initialize_map(n);
+            _default_construct();
+        }
+
+        iterator begin() noexcept { return this->_start; }
+
+        const_iterator cbegin() noexcept { return this->_start; }
+
+        iterator end() noexcept { return this->_finish; }
+
+        const_iterator cend() const noexcept { return this->_finish; }
 
     private:
         _Map_ptr   _map;
@@ -200,6 +251,25 @@ namespace opendsa
             this->_start._curr  = this->_start._first;
             this->_finish._curr = this->_finish._first
                                   + num_elems % iterator::get_node_elements();
+        }
+
+        void _default_construct()
+        {
+            _Map_ptr curr;
+            try
+            {
+                for (curr = this->_start._map; curr < this->_finish._map;
+                     ++curr)
+                    std::__uninitialized_default_a(
+                        *curr, *curr + iterator::get_node_elements(), _alloc);
+                std::__uninitialized_default_a(this->_finish._first,
+                                               this->_finish._curr, _alloc);
+            }
+            catch (...)
+            {
+                std::_Destroy(this->_start, iterator(*curr, curr), _alloc);
+                throw;
+            }
         }
     };
 } // namespace opendsa
