@@ -99,6 +99,24 @@ namespace opendsa
             return tmp;
         }
 
+        deque_iterator &operator--() noexcept
+        {
+            if (_curr == _first)
+            {
+                this->set_node(_map - 1);
+                _curr = _last;
+            }
+            --_curr;
+            return *this;
+        }
+
+        deque_iterator operator--(int) noexcept
+        {
+            deque_iterator tmp = *this;
+            --(*this);
+            return tmp;
+        }
+
         void set_node(map_pointer new_node) noexcept
         {
             this->_map   = new_node;
@@ -151,7 +169,7 @@ namespace opendsa
         /**
          * @brief Creates an empty %deque
          */
-        deque()
+        constexpr deque()
             : _map(), _map_size(0), _start(), _finish(), _alloc(), _map_alloc()
         {
             _initialize_map(0);
@@ -162,6 +180,13 @@ namespace opendsa
         {
             _initialize_map(n);
             _default_construct();
+        }
+
+        constexpr deque(size_type n, const value_type &value)
+            : _map(), _map_size(n), _start(), _finish(), _alloc(), _map_alloc()
+        {
+            _initialize_map(n);
+            _fill_construct(value);
         }
 
         iterator begin() noexcept { return this->_start; }
@@ -270,6 +295,26 @@ namespace opendsa
                 std::_Destroy(this->_start, iterator(*curr, curr), _alloc);
                 throw;
             }
+        }
+
+        void _fill_construct(const value_type& value)
+        {
+            _Map_ptr curr;
+            try
+            {
+                for (curr = this->_start._map; curr < this->_finish._map;
+                     ++curr)
+                    std::__uninitialized_fill_a(
+                        *curr, *curr + iterator::get_node_elements(), value, _alloc);
+                std::__uninitialized_fill_a(this->_finish._first,
+                                               this->_finish._curr, value, _alloc);
+            }
+            catch (...)
+            {
+                std::_Destroy(this->_start, iterator(*curr, curr), _alloc);
+                throw;
+            }
+
         }
     };
 } // namespace opendsa
