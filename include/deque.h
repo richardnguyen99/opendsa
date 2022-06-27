@@ -62,7 +62,11 @@ namespace opendsa
         /**
          * @brief Construct an empty deque_iterator object
          */
-        deque_iterator() noexcept : _curr(), _first(), _last(), _map() {}
+        deque_iterator() noexcept
+            : _curr(item_pointer()), _first(item_pointer()),
+              _last(item_pointer()), _map(map_pointer())
+        {
+        }
 
         /**
          * @brief Construct a new deque_iterator object
@@ -255,6 +259,16 @@ namespace opendsa
             _initialize_map(0);
         }
 
+        /**
+         * @brief Creates a deque filled with @a n default values of @a _Tp
+         *
+         * @param n The number of elements to initialize.
+         *
+         * This constructor fills the %deque with @a n default constructed
+         * elements of type @a _Tp. A default constructed element can be the
+         * default value or called via default constructor. Thus, if _Tp is a
+         * user-defined class, a default constructor should be supported.
+         */
         explicit deque(size_type n)
             : _map(), _map_size(n), _start(), _finish(), _alloc(), _map_alloc()
         {
@@ -262,6 +276,15 @@ namespace opendsa
             _default_construct();
         }
 
+        /**
+         * @brief Creates a deque filled with @a n copies of @a value
+         *
+         * @param n The number of elements to initialize
+         * @param value An element to create copies
+         *
+         * This constructor fills the %deque with @a n copies of @a value. If @n
+         * value is a user-defined type, a copy constructor should be available.
+         */
         constexpr deque(size_type n, const value_type &value)
             : _map(), _map_size(n), _start(), _finish(), _alloc(), _map_alloc()
         {
@@ -276,6 +299,14 @@ namespace opendsa
 #endif
         }
 
+        /**
+         * @brief  Creates a deque by copying another
+         *
+         * @param other Another %deque of same type and allocator
+         *
+         * This constructor creates the new %deque by filling each element with
+         * the according element from @a other.
+         */
         constexpr deque(const deque &other)
             : _map(), _map_size(other._map_size), _start(), _finish(), _alloc(),
               _map_alloc()
@@ -299,8 +330,34 @@ namespace opendsa
 #endif
         }
 
+        constexpr deque(deque &&other)
+            : _map(), _map_size(other._map_size), _start(other._start),
+              _finish(other._finish), _alloc(), _map_alloc()
+        {
+            other._start    = iterator();
+            other._finish   = iterator();
+            other._map      = _Map_ptr();
+            other._map_size = 0;
+
+#ifdef DEBUG
+            std::cout << "Deque's move constructor is called\n";
+            std::cout << "Other deque diff: " << other.size() << "\n";
+            std::for_each(other.cbegin(), other.cend(),
+                          [](const auto &curr) { std::cout << curr << " "; });
+            std::cout << "New deque diff: " << this->size() << "\n";
+            std::for_each(this->cbegin(), this->cend(),
+                          [](const auto &curr) { std::cout << curr << " "; });
+            std::cout << "\n\n";
+#endif
+        }
+
         // Iterators
 
+        /**
+         * @brief
+         *
+         * @return constexpr iterator
+         */
         constexpr iterator begin() noexcept { return this->_start; }
 
         constexpr const_iterator cbegin() const noexcept
@@ -335,7 +392,7 @@ namespace opendsa
         // Capacity
         constexpr size_type size() const noexcept
         {
-            return this->_finish - this->_start;
+            return std::max(this->_finish - this->_start, difference_type(0));
         }
 
         constexpr bool empty() const noexcept
