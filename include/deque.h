@@ -16,6 +16,10 @@
 #include <iterator>
 #include <memory>
 
+#ifdef DEBUG
+#include <iostream>
+#endif // DEBUG
+
 namespace opendsa
 {
     /**
@@ -117,6 +121,43 @@ namespace opendsa
             return tmp;
         }
 
+        deque_iterator &operator+=(difference_type n) noexcept
+        {
+            const difference_type offset = n + (_curr - _first);
+            if (offset >= 0 && offset < difference_type(get_node_elements()))
+                _curr += n;
+            else
+            {
+                const difference_type node_offset
+                    = offset > 0 ? offset / difference_type(get_node_elements())
+                                 : -difference_type((-offset - 1)
+                                                    / get_node_elements())
+                                       - 1;
+                this->set_node(_map + node_offset);
+                _curr = _first + (offset - node_offset)
+                        + difference_type(get_node_elements());
+            }
+
+            return *this;
+        }
+
+        deque_iterator operator+(difference_type n) const noexcept
+        {
+            deque_iterator tmp = *this;
+            return tmp += n;
+        }
+
+        deque_iterator &operator-=(difference_type n) noexcept
+        {
+            return *this += -n;
+        }
+
+        deque_iterator operator-(difference_type n) const noexcept
+        {
+            deque_iterator tmp = *this;
+            return tmp -= n;
+        }
+
         void set_node(map_pointer new_node) noexcept
         {
             this->_map   = new_node;
@@ -139,6 +180,43 @@ namespace opendsa
         return rhs._curr != lhs._curr;
     }
 
+    template <typename _Tp, typename _Ref, typename _Ptr>
+    inline typename deque_iterator<_Tp, _Ref, _Ptr>::difference_type
+    operator-(const deque_iterator<_Tp, _Ref, _Ptr> &lhs,
+              const deque_iterator<_Tp, _Ref, _Ptr> &rhs) noexcept
+    {
+        using iterator        = deque_iterator<_Tp, _Ref, _Ptr>;
+        using difference_type = typename iterator::difference_type;
+
+        // Calculate how far two iterators
+        const difference_type diff_on_node
+            = iterator::get_node_elements() * (lhs._map - rhs._map - 1);
+
+        const difference_type diff_on_lhs = (lhs._curr - rhs._first);
+        const difference_type diff_on_rhs = (rhs._last - rhs._curr);
+
+        return diff_on_node + diff_on_lhs + diff_on_rhs;
+    }
+
+    template <typename _Tp, typename _Ref1, typename _Ptr1, typename _Ref2,
+              typename _Ptr2>
+    inline typename deque_iterator<_Tp, _Ref1, _Ptr1>::difference_type
+    operator-(const deque_iterator<_Tp, _Ref1, _Ptr1> &lhs,
+              const deque_iterator<_Tp, _Ref2, _Ptr2> &rhs)
+    {
+        using iterator        = deque_iterator<_Tp, _Ref1, _Ptr1>;
+        using difference_type = typename iterator::difference_type;
+
+        // Calculate how far two iterators
+        const difference_type diff_on_node
+            = iterator::get_node_elements() * (lhs._map - rhs._map - 1);
+
+        const difference_type diff_on_lhs = (lhs._curr - rhs._first);
+        const difference_type diff_on_rhs = (rhs._last - rhs._curr);
+
+        return diff_on_node + diff_on_lhs + diff_on_rhs;
+    }
+
     template <typename _Tp, typename _Alloc = std::allocator<_Tp>>
     class deque
     {
@@ -156,7 +234,9 @@ namespace opendsa
         using value_allocator_type = _Alloc;
         using map_allocator_type   = _Map_alloc;
         using iterator             = deque_iterator<_Tp, _Tp &, _Ptr>;
-        using const_iterator = deque_iterator<_Tp, const _Tp &, _Ptr_const>;
+        using const_iterator   = deque_iterator<_Tp, const _Tp &, _Ptr_const>;
+        using reverse_iterator = std::reverse_iterator<iterator>;
+        using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
         using value_type      = _Tp;
         using pointer         = _Ptr;
@@ -187,15 +267,86 @@ namespace opendsa
         {
             _initialize_map(n);
             _fill_construct(value);
+#ifdef DEBUG
+            std::cout << "Deque's count copyies constructor is called\n";
+            std::cout << "New deque diff: " << this->size() << "\n";
+            std::for_each(this->_start, this->_finish,
+                          [](const auto &curr) { std::cout << curr << " "; });
+            std::cout << "\n\n";
+#endif
         }
 
-        iterator begin() noexcept { return this->_start; }
+        constexpr deque(const deque &other)
+            : _map(), _map_size(other._map_size), _start(), _finish(), _alloc(),
+              _map_alloc()
+        {
+            _initialize_map(other.size());
+            std::__uninitialized_copy_a(other.cbegin(), other.cend(), _start,
+                                        _alloc);
 
-        const_iterator cbegin() noexcept { return this->_start; }
+#ifdef DEBUG
+            std::cout << "Deque's copy constructor is called\n";
+            std::cout << "Other deque diff: " << (other.cend() - other.cbegin())
+                      << "\n";
+            std::for_each(other.cbegin(), other.cend(),
+                          [](const auto &curr) { std::cout << curr << " "; });
+            std::cout << "\n";
+            std::cout << "New deque diff: " << (this->_finish - this->_start)
+                      << "\n";
+            std::for_each(this->_start, this->_finish,
+                          [](const auto &curr) { std::cout << curr << " "; });
+            std::cout << "\n\n";
+#endif
+        }
 
-        iterator end() noexcept { return this->_finish; }
+        // Iterators
 
-        const_iterator cend() const noexcept { return this->_finish; }
+        constexpr iterator begin() noexcept { return this->_start; }
+
+        constexpr const_iterator cbegin() const noexcept
+        {
+            return this->_start;
+        }
+
+        constexpr iterator end() noexcept { return this->_finish; }
+
+        constexpr const_iterator cend() const noexcept { return this->_finish; }
+
+        constexpr reverse_iterator rbegin() noexcept
+        {
+            return reverse_iterator(this->_finish);
+        }
+
+        constexpr const_reverse_iterator crbegin() const noexcept
+        {
+            return const_reverse_iterator(this->_finish);
+        }
+
+        constexpr reverse_iterator rend() noexcept
+        {
+            return reverse_iterator(this->_start);
+        }
+
+        constexpr const_reverse_iterator crend() const noexcept
+        {
+            return const_reverse_iterator(this->_finish);
+        }
+
+        // Capacity
+        constexpr size_type size() const noexcept
+        {
+            return this->_finish - this->_start;
+        }
+
+        constexpr bool empty() const noexcept
+        {
+            return this->_finish == this->_start;
+        }
+
+        constexpr bool max_size() const noexcept
+        {
+            return _Tp_alloc_traits::max_size(_alloc);
+        }
 
     private:
         _Map_ptr   _map;
@@ -297,7 +448,7 @@ namespace opendsa
             }
         }
 
-        void _fill_construct(const value_type& value)
+        void _fill_construct(const value_type &value)
         {
             _Map_ptr curr;
             try
@@ -305,17 +456,19 @@ namespace opendsa
                 for (curr = this->_start._map; curr < this->_finish._map;
                      ++curr)
                     std::__uninitialized_fill_a(
-                        *curr, *curr + iterator::get_node_elements(), value, _alloc);
+                        *curr, *curr + iterator::get_node_elements(), value,
+                        _alloc);
                 std::__uninitialized_fill_a(this->_finish._first,
-                                               this->_finish._curr, value, _alloc);
+                                            this->_finish._curr, value, _alloc);
             }
             catch (...)
             {
                 std::_Destroy(this->_start, iterator(*curr, curr), _alloc);
                 throw;
             }
-
         }
+
+        void _copy_construct(iterator first, iterator last) {}
     };
 } // namespace opendsa
 
