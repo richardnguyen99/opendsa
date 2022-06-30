@@ -118,6 +118,24 @@ private:
 
 Since there is no element to hold, it's very straight-forward to define the default constructor for `opendsa::vector`: initializing every pointer to `nullptr`.
 
+### Count-value constructor
+
+The count-value constructor constructs a vector filled with `count` copies of a given `value`.
+
+```cpp
+public:
+    // other public member functions
+    vector(size_type n, const _Tp &value)
+    {
+        using traits_t = std::allocator_traits<_Alloc>;
+
+        _start  = traits_t::allocate(_alloc, n);
+        _finish = std::__uninitialized_fill_n_a(_start, n, value, _alloc);
+        _end    = _start + n;
+    }
+    // other public member functions
+```
+
 ## References
 
 - [https://stackoverflow.com/questions/14921531/what-is-the-difference-between-memory-allocation-through-new-and-allocator](https://stackoverflow.com/questions/14921531/what-is-the-difference-between-memory-allocation-through-new-and-allocator)
