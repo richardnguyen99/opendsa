@@ -1,3 +1,12 @@
+/**
+ * @file vector.cpp
+ * @author Richard Nguyen (richard.ng0616@gmail.com)
+ * @brief A brief driver to demonstrate how opendsa::vector works
+ * @version 0.1
+ * @date 2022-06-27
+ *
+ * @copyright Copyright (c) 2022
+ */
 #include <algorithm>
 #include <iostream>
 #include <vector>
@@ -150,21 +159,21 @@ int main(int argc, const char **argv)
     std::cout << "vec2 size: " << vec2.size() << "\n";
     std::cout << "vec2 capacity: " << vec2.capacity() << "\n";
 
-		opendsa::vector<int> vec4(10);
+    opendsa::vector<int> vec4(10);
     std::for_each(std::begin(vec4), std::end(vec4),
                   [](const int &e) { std::cout << e << " "; });
     std::cout << "\n";
     std::cout << "vec4 size: " << vec4.size() << "\n";
     std::cout << "vec4 capacity: " << vec4.capacity() << "\n";
 
-		opendsa::vector<int> vec5(vec2);
+    opendsa::vector<int> vec5(vec2);
     std::for_each(std::begin(vec5), std::end(vec5),
                   [](const int &e) { std::cout << e << " "; });
     std::cout << "\n";
     std::cout << "vec5 size: " << vec5.size() << "\n";
     std::cout << "vec5 capacity: " << vec5.capacity() << "\n";
 
-		vec2.insert(vec2.cend(), 3, 200);
+    vec2.insert(vec2.cend(), 3, 200);
     std::for_each(std::begin(vec2), std::end(vec2),
                   [](const int &e) { std::cout << e << " "; });
     std::cout << "\n";

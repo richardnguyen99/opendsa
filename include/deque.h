@@ -1,7 +1,8 @@
 /**
  * @file deque.h
  * @author Richard Nguyen (richard.ng0616@gmail.com)
- * @brief An oversimplified implementation of dequeu
+ * @brief An oversimplified implementation of deque
+ * @see docs/deque.h
  * @version 0.1
  * @date 2022-06-25
  *
@@ -251,7 +252,7 @@ namespace opendsa
         using difference_type = std::ptrdiff_t;
 
         /**
-         * @brief Creates an empty %deque
+         * @brief Creates an empty %deque.
          */
         constexpr deque()
             : _map(), _map_size(0), _start(), _finish(), _alloc(), _map_alloc()
@@ -260,7 +261,7 @@ namespace opendsa
         }
 
         /**
-         * @brief Creates a deque filled with @a n default values of @a _Tp
+         * @brief Creates a deque filled with @a n default values of @a _Tp.
          *
          * @param n The number of elements to initialize.
          *
@@ -277,10 +278,10 @@ namespace opendsa
         }
 
         /**
-         * @brief Creates a deque filled with @a n copies of @a value
+         * @brief Creates a deque filled with @a n copies of @a value.
          *
-         * @param n The number of elements to initialize
-         * @param value An element to create copies
+         * @param n The number of elements to initialize.
+         * @param value An element to create copies.
          *
          * This constructor fills the %deque with @a n copies of @a value. If @n
          * value is a user-defined type, a copy constructor should be available.
@@ -300,9 +301,9 @@ namespace opendsa
         }
 
         /**
-         * @brief  Creates a deque by copying another
+         * @brief  Creates a deque by copying another.
          *
-         * @param other Another %deque of same type and allocator
+         * @param other Another %deque of same type and allocator.
          *
          * This constructor creates the new %deque by filling each element with
          * the according element from @a other.
@@ -330,10 +331,17 @@ namespace opendsa
 #endif
         }
 
+        /**
+         * @brief  Creates a deque by moving another.
+         *
+         * This constructor creates the new %deque by moving each element from
+         * %other to the new one.
+         */
         constexpr deque(deque &&other)
             : _map(), _map_size(other._map_size), _start(other._start),
               _finish(other._finish), _alloc(), _map_alloc()
         {
+
             other._start    = iterator();
             other._finish   = iterator();
             other._map      = _Map_ptr();
@@ -354,42 +362,74 @@ namespace opendsa
         // Iterators
 
         /**
-         * @brief
-         *
-         * @return constexpr iterator
+         * @brief Gets a read/write iterator pointing to the first element in
+         * %deque.
          */
         constexpr iterator begin() noexcept { return this->_start; }
 
+        /**
+         * @brief  Gets a read-only iterator pointing to the first element in
+         * %deque.
+         */
         constexpr const_iterator cbegin() const noexcept
         {
             return this->_start;
         }
 
+        /**
+         * @brief Gets a read/write iterator pointing to the end of %deque (not
+         * the last element).
+         */
         constexpr iterator end() noexcept { return this->_finish; }
 
+        /**
+         * @brief  Gets a read-only iterator pointing to the end of %deque (not
+         * the last element)
+         */
         constexpr const_iterator cend() const noexcept { return this->_finish; }
 
+        /**
+         * @brief  Gets a read/write reverse iterator pointing to the last
+         * element of %deque.
+         */
         constexpr reverse_iterator rbegin() noexcept
         {
             return reverse_iterator(this->_finish);
         }
 
+        /**
+         * @brief  Gets a read-only reverse iterator pointing to the last
+         * element of %deque.
+         */
         constexpr const_reverse_iterator crbegin() const noexcept
         {
             return const_reverse_iterator(this->_finish);
         }
 
+        /**
+         * @brief Gets a read/write reverse iterator pointing to the beginning
+         * of %deque (not the first element).
+         */
         constexpr reverse_iterator rend() noexcept
         {
             return reverse_iterator(this->_start);
         }
 
+        /**
+         * @brief Gets a read-only reverse iterator pointing to the beginning
+         * of %deque (not the first element).
+         */
         constexpr const_reverse_iterator crend() const noexcept
         {
             return const_reverse_iterator(this->_finish);
         }
 
         // Capacity
+        /**
+         * @brief Returns the number of elements in the container.
+         *
+         * @return constexpr size_type
+         */
         constexpr size_type size() const noexcept
         {
             return std::max(this->_finish - this->_start, difference_type(0));
