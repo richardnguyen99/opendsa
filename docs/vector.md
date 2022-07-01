@@ -273,6 +273,178 @@ Since this constructor is templated with type `_InputIter`, `_InputIter` can be 
 
 Then, the constructor will extract elements from the range `[first, last)` and insert them into the new vector object. `std::addressof()` in this case guarantees the element that is about to be constructed is in the correct address.
 
+### Initializer-list constructor
+
+This constructor allows initializing a vector object with a _C-style_ list.
+
+#### Example
+
+```cpp
+opendsa::vector<int> v{ 1, 2, 3, 4, 5, 6, 7, 8 };
+
+std::cout << v.size() << " " << v.capacity() << "\n";
+for (const int& e : v)
+    std::cout << e << " ";
+std::cout << "\n";
+
+// Output
+// 8 8
+// 1 2 3 4 5 6 7 8
+```
+
+#### Implementation
+
+```cpp
+#include <initializer_list>
+
+vector(std::initializer_list<value_type> init)
+{
+    using traits_t = std::allocator_traits<allocator>;
+
+    const size_type n = init.size();
+    _start                  = traits_t::allocate(_alloc, n);
+    _finish                 = _start;
+
+    for (auto curr = init.begin(); curr != init.end(); curr++)
+    {
+        traits_t::construct(_alloc, std::addressof(*_finish), *curr);
+        _finish++;
+    }
+
+    _end = _start + n;
+}
+```
+
+#### Explanation
+
+This constructor's definition behaves exactly like the one in the range-based constructor. But instead of passing two iterators to mark the range, the list will be passed directly so inline arrays are accepted, thus there is no need to create one just to initialize a vector object.
+
+Note that, the initializer list constructor is sometimes mistaken with the count-value constructor since both have similar syntax. For example:
+
+```cpp
+opendsa::vector<int> v1{3,4}; // A container holding 3 and 4. Size = 2
+opendsa::vector<int> v2(3,4); // A container holding three 4's, or {4,4,4}. Size = 3.
+```
+
+### Copy constructor
+
+This constructor uses the deep copying technique to copy each elements from the original vector object to the new one without compromising the data in original when there is modification occurring to the new one.
+
+#### Example
+
+```cpp
+opendsa::vector<int> v1{ 1, 2, 3, 4, 5, 6, 7, 8 };
+opendsa::vector<int> v2(v1);
+
+std::cout << v2.size() << " " << v2.capacity() << "\n";
+for (const int& e : v2)
+    std::cout << e << " ";
+std::cout << "\n";
+
+// Output
+// 8 8
+// 1 2 3 4 5 6 7 8
+```
+
+#### Implementation
+
+```cpp
+vector(const vector& other)
+{
+    using traits_t = std::allocator_traits<allocator>;
+
+    const difference_type n = other._finish - other._start;
+    _start                  = traits_t::allocate(_alloc, n);
+    _finish                 = _start;
+
+    for (auto curr = other._start; curr != other._finish; curr++)
+    {
+        traits_t::construct(_alloc, std::addressof(*_finish), *curr);
+        _finish++;
+    }
+
+    _end = _start + n;
+}
+```
+
+#### Explanation
+
+This constructor is similar to the range-based and initializer list constructor in a way that it uses two pointers to mark the range of elements and constructs new elements accordingly.
+
+One thing to note is that the other vector must be passed by reference. If there were no copy constructor defined yet, passing by value would cause an infinite loop because the copy constructor would call itself... over and over again... `const` is used to make sure there is no modification occurring to the original.
+
+### Move constructor
+
+This constructor allows transfering ownership of the data held by one vector object to the new one without copying.
+
+#### Example
+
+```cpp
+opendsa::vector<int> dummy(8,5);
+opendsa::vector<int> v(std::move(dummy));
+
+std::cout << "Dummy: " << dummy.size() << " " << dummy.capacity() << "\n";
+std::cout << "Vector: " << v.size() << " " << v.capacity() << "\n";
+
+for (const int& e : dummy)
+    std::cout << e << " ";
+std::cout << "\n";
+for (const int& e : v)
+    std::cout << e << " ";
+std::cout << "\n";
+
+// Output:
+// Dummy: 0 0
+// Vector: 8 8
+//
+// 5 5 5 5 5 5 5 5
+```
+
+#### Implementation
+
+```cpp
+vector(vector&& other)
+{
+    this->_start  = other._start;
+    this->_finish = other._finish;
+    this->_end    = other._end;
+
+    other._start  = pointer();
+    other._finish = pointer();
+    other._end    = pointer();
+}
+```
+
+#### Explanation
+
+The main idea of move construct is to transfer ownership without new allocations. Instead, all the pointers from `other` are copied to those in `this`, and assigned with `nullptr`.
+
+### Destructor
+
+The destructor is to clean up and return the allocated memory back to the memory pool when a vector object goes out of scope.
+
+#### Implementation
+
+```cpp
+~vector()
+{
+    using traits_t          = std::allocator_traits<allocator>;
+    const difference_type n = std::distance(_start, _finish);
+
+    for (auto curr = _start; curr != _finish; curr++)
+        traits_t::destroy(_alloc, std::addressof(*curr));
+
+    _finish = _start;
+    traits_t::deallocate(_alloc, _start, n);
+}
+```
+
+#### Explanation
+
+First, the destructor calls the destructor of type `_Tp` to destroy each individual element in case `_Tp` associates with dynamic allocation and needs to be reclaimed.
+
+Finally, it frees all the allocated storage associated with the object.
+
 ## References
 
 - [https://stackoverflow.com/questions/14921531/what-is-the-difference-between-memory-allocation-through-new-and-allocator](https://stackoverflow.com/questions/14921531/what-is-the-difference-between-memory-allocation-through-new-and-allocator)

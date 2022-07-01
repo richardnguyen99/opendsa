@@ -62,9 +62,12 @@ namespace opendsa
             _end    = _start + n;
         }
 
-        template <typename _InputIter,
-                  typename = std::_RequireInputIter<_InputIter>>
-        constexpr vector(_InputIter first, _InputIter last)
+        template <
+            typename _InputIter,
+            typename = typename std::enable_if<std::is_convertible<
+                typename std::iterator_traits<_InputIter>::iterator_category,
+                std::input_iterator_tag>::value>::type>
+        vector(_InputIter first, _InputIter last)
         {
             using traits_t = std::allocator_traits<allocator>;
 
@@ -83,6 +86,13 @@ namespace opendsa
 
         constexpr vector(const vector &other)
         {
+#ifdef DEBUG
+            std::cout << "Copy constructor is called\n";
+            std::cout << "\nBefore copying:\n";
+            std::cout << "=== Other start: " << other._start << "\n";
+            std::cout << "=== Other finish: " << other._finish << "\n";
+            std::cout << "=== Other end: " << other._end << "\n\n";
+#endif
             using traits_t = std::allocator_traits<allocator>;
 
             const difference_type n = std::distance(other._start, other._end);
@@ -96,10 +106,26 @@ namespace opendsa
             }
 
             _end = _start + n;
+#ifdef DEBUG
+            std::cout << "After copying: \n";
+            std::cout << "=== Other start: " << other._start << "\n";
+            std::cout << "=== Other finish: " << other._finish << "\n";
+            std::cout << "=== Other end: " << other._end << "\n\n";
+            std::cout << "=== New start: " << this->_start << "\n";
+            std::cout << "=== New finish: " << this->_finish << "\n";
+            std::cout << "=== New end: " << this->_end << "\n\n";
+#endif
         }
 
-        constexpr vector(vector &&other)
+        constexpr vector(vector &&other) noexcept
         {
+#ifdef DEBUG
+            std::cout << "Move constructor is called\n";
+            std::cout << "\nBefore moving:\n";
+            std::cout << "=== Other start: " << other._start << "\n";
+            std::cout << "=== Other finish: " << other._finish << "\n";
+            std::cout << "=== Other end: " << other._end << "\n\n";
+#endif
             this->_start  = other._start;
             this->_finish = other._finish;
             this->_end    = other._end;
@@ -107,13 +133,23 @@ namespace opendsa
             other._start  = pointer();
             other._finish = pointer();
             other._end    = pointer();
+
+#ifdef DEBUG
+            std::cout << "After moving:\n";
+            std::cout << "=== Other start: " << other._start << "\n";
+            std::cout << "=== Other finish: " << other._finish << "\n";
+            std::cout << "=== Other end: " << other._end << "\n\n";
+            std::cout << "=== New start: " << this->_start << "\n";
+            std::cout << "=== New finish: " << this->_finish << "\n";
+            std::cout << "=== New end: " << this->_end << "\n\n";
+#endif
         }
 
         constexpr vector(std::initializer_list<_Tp> init)
         {
             using traits_t = std::allocator_traits<allocator>;
 
-            const difference_type n = std::distance(init.begin(), init.end());
+            const size_type n = init.size();
             _start                  = traits_t::allocate(_alloc, n);
             _finish                 = _start;
             for (auto curr = init.begin(); curr != init.end(); curr++)
@@ -437,8 +473,6 @@ namespace opendsa
 
         constexpr iterator erase(const_iterator pos)
         {
-            using traits_t = std::allocator_traits<allocator>;
-
             iterator normal_pos = begin() + (pos - cbegin());
 
             if (normal_pos + 1 != end())
@@ -475,10 +509,7 @@ namespace opendsa
             return normal_first;
         }
 
-        constexpr void pop_back()
-        {
-            this->erase(cend() - 1);
-        }
+        constexpr void pop_back() { this->erase(cend() - 1); }
 
         constexpr void resize(size_type count, const value_type &value)
         {
@@ -506,19 +537,19 @@ namespace opendsa
             this->resize(count, value_type());
         }
 
-        constexpr void swap(vector& other)
+        constexpr void swap(vector &other)
         {
-            pointer _tmp_start = other._start;
+            pointer _tmp_start  = other._start;
             pointer _tmp_finish = other._finish;
-            pointer _tmp_end = other._end;
+            pointer _tmp_end    = other._end;
 
-            other._start = this->_start;
+            other._start  = this->_start;
             other._finish = this->_finish;
-            other._end = this->_end;
+            other._end    = this->_end;
 
-            this->_start = _tmp_start;
+            this->_start  = _tmp_start;
             this->_finish = _tmp_finish;
-            this->_end = _tmp_end;
+            this->_end    = _tmp_end;
         }
 
     private:
