@@ -79,8 +79,8 @@ private:
 Now, when member types have been defined, it's easy extract what types are associated with a specific vector object in a uniformed interface. Let's take an example for `std::vector`:
 
 ```cpp
-std::vector<int> v{ 1, 2, 3, 4, 5 };
-std::vector<int>::size_type size = v.size();    // size = 5
+opendsa::vector<int> v{ 1, 2, 3, 4, 5 };
+opendsa::vector<int>::size_type size = v.size();    // size = 5
 ```
 
 The list of member types at this point is not finished. To make it less complicated, only member types associated with avaiable data members, member methods and _trivial_ types exist.
@@ -91,17 +91,19 @@ Constructors defines how `opendsa::vector` objects are declared and initialized.
 
 ### Default constructor
 
-The default constructor allows users to declare vector objects without giving, or initializing, any values to the objects. An example from `std::vector`:
+The default constructor allows users to declare vector objects without giving, or initializing, any values to the objects.
+
+#### Example
 
 ```cpp
-std::vector<int> v;                 // v is currently hodling no element
+opendsa::vector<int> v;                 // v is currently hodling no element
 std::cout << v.size() << " ";
 std::cout << v.capaity() << "\n";
 
 // output: 0 0
 ```
 
-Therefore, the default constructor can be defined as:
+#### Implementation
 
 ```cpp
 template <typename _Tp, typename _Alloc = std::allocator<_T>>
@@ -116,13 +118,32 @@ private:
 };
 ```
 
-Since there is no element to hold, it's very straight-forward to define the default constructor for `opendsa::vector`: initializing every pointer to `nullptr`.
+#### Explanation
+
+Since the default constructor allows users to declare vector objects without initializing any value, all the three pointers can point to `nullptr` to indicate that there is no value to hold. This implementation later implies the size and the capacity are 0.
 
 ### Count-value constructor
 
 The count-value constructor constructs a vector filled with `count` copies of a given `value`.
 
+#### Example
+
 ```cpp
+opendsa::vector<int> v(8, 3);
+std::cout << v.size() << " ";
+std::cout << v.capaity() << "\n";
+
+// Output:
+// 8 8
+// 3 3 3 3 3 3 3 3
+```
+
+#### Implementation
+
+```cpp
+#include <memory>
+
+// ...
 public:
     // other public member functions
     vector(size_type n, const _Tp &value)
@@ -130,13 +151,130 @@ public:
         using traits_t = std::allocator_traits<_Alloc>;
 
         _start  = traits_t::allocate(_alloc, n);
-        _finish = std::__uninitialized_fill_n_a(_start, n, value, _alloc);
+        for (size_type i = 0; i < n; i++)
+            traits_t::construct(_alloc, _start + i, value);
+
+        _finish = _start + n;
         _end    = _start + n;
     }
     // other public member functions
 ```
 
+#### Explanation
+
+First, `traits_t::allocate` will allocate the spaces needed for `n` copies and assign the starting pointer pointing to the first element to `_start`. Then, `traits_t::construct` will create `n` objects of type `_Tp`  with the value `value`. Finally, `_finish` and `_end` will be marked as the end of the storage.
+
+One note is that this constructor will create a multiple copies of `value`.
+
+
+### Count default-value constructor
+
+The count default-value constructor constructs a vector filled with `count` default-valued elements.
+
+#### Example
+
+```cpp
+opendsa::vector<int> v(8);
+std::cout << v.size() << " ";
+std::cout << v.capaity() << "\n";
+
+for (const int& e : v)
+    std::cout << e << " ";
+std::cout << "\n";
+
+// Output:
+// 8 8
+// 0 0 0 0 0 0 0 0
+```
+
+#### Implementation
+
+```cpp
+#include <memory>
+
+// ...
+public:
+    // other public member functions
+    vector(size_type n)
+    {
+        using traits_t = std::allocator_traits<_Alloc>;
+
+        _start  = traits_t::allocate(_alloc, n);
+        for (size_type i = 0; i < n; i++)
+            traits_t::construct(_alloc, _start + i, value_type());
+
+        _finish = _start + n;
+        _end    = _start + n;
+    }
+    // other public member functions
+```
+
+#### Explanation
+
+This constructor behaves exactly as the count-value constructor, except that insteadd of passing a value, the constructor will fill the container with default value of type `_Tp`. If `_Tp` is a user-defined class, its default constructor must be provided.
+
+### Range-fill constructor
+
+This constructor constructs a vector object filled with elements based on a specified range of elements.
+
+#### Examples
+
+```cpp
+int array[] = { 1, 2, 3, 4, 5, 6, 7, 8 };
+opendsa::vector<int> v(std::begin(array), std::end(array));
+
+std::cout << v.size() << " " << v.capacity() << "\n";
+for (const int& e : v)
+    std::cout << e << " ";
+std::cout << "\n";
+
+// Output:
+// 8 8
+// 1 2 3 4 5 6 7 8
+```
+
+#### Implementation
+
+```cpp
+#include <memory>
+
+// ...
+public:
+    // other public member functions
+    template <
+        typename _InputIter,
+        typename = typename std::enable_if<std::is_convertible<
+            typename std::iterator_traits<_InputIter>::iterator_category,
+            std::input_iterator_tag>::value>::type>
+    constexpr vector(_InputIter first, _InputIter last)
+    {
+        using traits_t = std::allocator_traits<allocator>;
+
+        const difference_type n = std::distance(first, last);
+        _start                  = traits_t::allocate(_alloc, n);
+        _finish                 = _start;
+
+        for (auto curr = first; curr != last; curr++)
+        {
+            traits_t::construct(_alloc, std::addressof(*_finish), *curr);
+            _finish++;
+        }
+
+        _end = _start + n;
+    }
+    // other public member functions
+```
+
+#### Explanation
+
+Quite tricky! The idea of this constructor is to initialize a vector object with a range of elements. This range could be from other vector objects whose type is either `opendsa::vector` or `std::vector`, array, or any type that supports iterators.
+
+Since this constructor is templated with type `_InputIter`, `_InputIter` can be anything. Thus, it's mandatory to separate it from the count-value constructor in case `_InputIter` is passed in the parameters in the count-value constructor. Therefore, `std::enable_if` is used to make it the most appropriate constructor if `_InputIter` satisfies `std::input_iterator_tag` (or [LegacyInputIterator](https://en.cppreference.com/w/cpp/named_req/InputIterator)) to the ambiguity.
+
+Then, the constructor will extract elements from the range `[first, last)` and insert them into the new vector object. `std::addressof()` in this case guarantees the element that is about to be constructed is in the correct address.
+
 ## References
 
 - [https://stackoverflow.com/questions/14921531/what-is-the-difference-between-memory-allocation-through-new-and-allocator](https://stackoverflow.com/questions/14921531/what-is-the-difference-between-memory-allocation-through-new-and-allocator)
 - [https://en.cppreference.com/w/cpp/container/vector](https://en.cppreference.com/w/cpp/container/vector)
+- [https://en.cppreference.com/w/cpp/language/sfinae](https://en.cppreference.com/w/cpp/language/sfinae)
