@@ -292,7 +292,7 @@ namespace opendsa
             _initialize_map(n);
             _fill_construct(value);
 #ifdef DEBUG
-            std::cout << "Deque's count copyies constructor is called\n";
+            std::cout << "Deque's count copies constructor is called\n";
             std::cout << "New deque diff: " << this->size() << "\n";
             std::for_each(this->_start, this->_finish,
                           [](const auto &curr) { std::cout << curr << " "; });
@@ -341,22 +341,52 @@ namespace opendsa
             : _map(), _map_size(other._map_size), _start(other._start),
               _finish(other._finish), _alloc(), _map_alloc()
         {
-
-            other._start    = iterator();
-            other._finish   = iterator();
-            other._map      = _Map_ptr();
             other._map_size = 0;
+            other._initialize_map(0);
 
 #ifdef DEBUG
             std::cout << "Deque's move constructor is called\n";
             std::cout << "Other deque diff: " << other.size() << "\n";
             std::for_each(other.cbegin(), other.cend(),
                           [](const auto &curr) { std::cout << curr << " "; });
+            std::cout << "\n";
             std::cout << "New deque diff: " << this->size() << "\n";
             std::for_each(this->cbegin(), this->cend(),
                           [](const auto &curr) { std::cout << curr << " "; });
             std::cout << "\n\n";
 #endif
+        }
+
+        ~deque()
+        {
+            for (_Map_ptr curr = _start._map; curr < _finish._map + 1; curr++)
+                _Tp_alloc_traits::deallocate(_alloc, std::addressof(**curr), iterator::get_node_elements());
+
+
+            std::cout << "Hit!\n" ;
+            _Map_alloc_traits::deallocate(_map_alloc, _map, _map_size);
+            // If there are more full-filled node map
+            for (_Map_ptr map = _start._map + 1; map < _finish._map; map++)
+                for (pointer node = *map;
+                     node < (*map + iterator::get_node_elements()); node++)
+                    _Tp_alloc_traits::destroy(_alloc, std::addressof(*node));
+
+            // If first and last are on two separate nodes
+            if (_start._map != _finish._map)
+            {
+                for (pointer curr = _start._curr; curr < _start._last; curr++)
+                    _Tp_alloc_traits::destroy(_alloc, std::addressof(*curr));
+
+                for (pointer curr = _finish._first; curr < _finish._curr; curr++)
+                    _Tp_alloc_traits::destroy(_alloc, std::addressof(*curr));
+            }
+            else
+            {
+                for (pointer curr = _start._curr; curr < _finish._curr; curr++)
+                {
+                    _Tp_alloc_traits::destroy(_alloc, std::addressof(*curr));
+                }
+            }
         }
 
         // Iterators
@@ -432,7 +462,7 @@ namespace opendsa
          */
         constexpr size_type size() const noexcept
         {
-            return std::max(this->_finish - this->_start, difference_type(0));
+            return this->_finish - this->_start;
         }
 
         constexpr bool empty() const noexcept
@@ -465,10 +495,12 @@ namespace opendsa
                                          iterator::get_node_elements());
         }
 
-        void _destroy_nodes(_Map_ptr start, _Map_ptr finish)
+        void _deallocate_nodes(_Map_ptr start, _Map_ptr finish)
         {
             for (_Map_ptr curr = start; curr < finish; ++curr)
+            {
                 _deallocate_node(*curr);
+            }
         }
 
         void _create_nodes(_Map_ptr start, _Map_ptr finish)
@@ -482,7 +514,7 @@ namespace opendsa
             }
             catch (...)
             {
-                _destroy_nodes(start, curr);
+                _deallocate_nodes(start, curr);
                 throw; // throw again so that the caller to this function
                        // catches an exception
             }
@@ -566,6 +598,32 @@ namespace opendsa
         }
 
         void _copy_construct(iterator first, iterator last) {}
+
+        void _destroy_data(iterator first, iterator last)
+        {
+            // If there are more full-filled node map
+            for (_Map_ptr map = first._map + 1; map < last._map; map++)
+                for (pointer node = *map;
+                     node < (*map + iterator::get_node_elements()); node++)
+                    _Tp_alloc_traits::destroy(_alloc, std::addressof(*node));
+
+            // If first and last are on two separate nodes
+            if (first._map != last._map)
+            {
+                for (pointer curr = first._curr; curr < first._last; curr++)
+                    _Tp_alloc_traits::destroy(_alloc, std::addressof(*curr));
+
+                for (pointer curr = last._first; curr < first._curr; curr++)
+                    _Tp_alloc_traits::destroy(_alloc, std::addressof(*curr));
+            }
+            else
+            {
+                for (pointer curr = first._curr; curr < last._curr; curr++)
+                {
+                    _Tp_alloc_traits::destroy(_alloc, std::addressof(*curr));
+                }
+            }
+        }
     };
 } // namespace opendsa
 
