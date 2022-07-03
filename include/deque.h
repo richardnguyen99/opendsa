@@ -115,6 +115,80 @@ namespace opendsa
 #endif
         }
 
+        reference operator*() const noexcept { return *_curr; }
+
+        pointer operator->() const noexcept { return _curr; }
+
+        deque_iterator &operator++() noexcept
+        {
+            ++_curr;
+            if (_curr == _last)
+            {
+                set_node(_node + 1);
+                _curr = _first;
+            }
+
+            return *this;
+        }
+
+        deque_iterator operator++(int) const noexcept
+        {
+            deque_iterator temp = *this;
+            ++*this;
+            return temp;
+        }
+
+        deque_iterator &operator--() noexcept
+        {
+            if (_curr == _first)
+            {
+                set_node(_node - 1);
+                _curr = _last;
+            }
+            --_curr;
+            return *this;
+        }
+
+        deque_iterator operator--(int) const noexcept
+        {
+            deque_iterator temp = *this;
+            ++*this;
+            return temp;
+        }
+
+        deque_iterator &operator+=(difference_type n) noexcept
+        {
+            // This overloaded operator accepts both positive and negative
+            // values to traverse the %deque_iterator. Therefore, every check
+            // should include both signs.
+            const difference_type elm_offset = n + (_curr - _first);
+
+            if (elm_offset >= 0 && elm_offset < difference_type(get_nnodes()))
+                _curr += n;
+            else
+            {
+                const difference_type node_offset
+                    = elm_offset > 0
+                          ? elm_offset / difference_type(get_nnodes())
+                          : -difference_type((-elm_offset - 1) / get_nnodes())
+                                - 1;
+                set_node(_node + node_offset);
+                _curr = _first
+                        + (elm_offset
+                           - node_offset * difference_type(get_nnodes()));
+            }
+        }
+
+        deque_iterator &operator-=(difference_type n) noexcept
+        {
+            return (*this += -n);
+        }
+
+        reference operator[](difference_type n) const noexcept
+        {
+            return *(*this + n);
+        }
+
         /**
          * @brief Mainly control traversal amongst nodes in the map
          *
@@ -130,6 +204,79 @@ namespace opendsa
             _node  = node;
             _first = *node;
             _last  = _first + get_nnodes();
+        }
+
+        friend bool operator==(const deque_iterator &lhs,
+                               const deque_iterator &rhs) noexcept
+        {
+            return lhs._curr == rhs._curr;
+        }
+
+        friend bool operator!=(const deque_iterator &lhs,
+                               const deque_iterator &rhs) noexcept
+        {
+            return !(lhs == rhs);
+        }
+
+        friend bool operator<(const deque_iterator &lhs,
+                              const deque_iterator &rhs) noexcept
+        {
+            return (lhs._node == rhs._node) ? (lhs._curr < rhs._curr)
+                                            : (lhs._node < rhs._node);
+        }
+
+        friend bool operator>(const deque_iterator &lhs,
+                              const deque_iterator &rhs) noexcept
+        {
+            return rhs < lhs;
+        }
+
+        friend bool operator<=(const deque_iterator &lhs,
+                               const deque_iterator &rhs) noexcept
+        {
+            return !(rhs < lhs);
+        }
+
+        friend bool operator>=(const deque_iterator &lhs,
+                               const deque_iterator &rhs) noexcept
+        {
+            return !(lhs > rhs);
+        }
+
+        friend difference_type operator-(const deque_iterator &lhs,
+                                         const deque_iterator &rhs) noexcept
+        {
+            return difference_type(get_nnodes())
+                       * (lhs._node - rhs._node - int(lhs._node != 0))
+                   + (lhs._curr - lhs._first) + (rhs._last - rhs._curr);
+        }
+
+        friend deque_iterator operator+(const deque_iterator &self,
+                                        difference_type       n) noexcept
+        {
+            deque_iterator tmp = self;
+            tmp += n;
+            return tmp;
+        }
+
+        friend deque_iterator operator+(difference_type       n,
+                                        const deque_iterator &self) noexcept
+        {
+            return (self + n);
+        }
+
+        friend deque_iterator operator-(const deque_iterator &self,
+                                        difference_type       n) noexcept
+        {
+            deque_iterator tmp = self;
+            tmp -= n;
+            return tmp;
+        }
+
+        friend deque_iterator operator-(difference_type       n,
+                                        const deque_iterator &self) noexcept
+        {
+            return (self - n);
         }
     };
 
@@ -157,6 +304,8 @@ namespace opendsa
         using difference_type = std::ptrdiff_t;
         using iterator        = deque_iterator<_Tp, _Tp &, _Tp_ptr>;
         using const_iterator  = deque_iterator<_Tp, const _Tp &, _Tp_ptr_const>;
+        using reverse_iterator       = std::reverse_iterator<iterator>;
+        using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
         using node_pointer = typename iterator::node_pointer;
         using map_pointer  = typename iterator::map_pointer;
@@ -167,6 +316,12 @@ namespace opendsa
         deque() : _start(), _finish(), _map(), _map_size()
         {
             _initialize_map(0);
+        }
+
+        deque(size_type count) : _start(), _finish(), _map(), _map_size()
+        {
+            _initialize_map(count);
+            _fill_construct(value_type());
         }
 
         /**
@@ -181,6 +336,34 @@ namespace opendsa
             _destroy_data(this->_start, this->_finish);
             _deallocate_nodes(this->_start._node, this->_finish._node);
             _deallocate_map(this->_map, this->_map_size);
+        }
+
+        iterator begin() noexcept { return this->_start; }
+
+        const_iterator cbegin() const noexcept { return this->_start; }
+
+        iterator end() noexcept { return this->_finish; }
+
+        const_iterator cend() const noexcept { return this->_finish; }
+
+        reverse_iterator rbegin() noexcept
+        {
+            return reverse_iterator(this->_finish);
+        }
+
+        const_reverse_iterator crbegin() const noexcept
+        {
+            return const_reverse_iterator(this->_finish);
+        }
+
+        reverse_iterator rend() noexcept
+        {
+            return reverse_iterator(this->_start);
+        }
+
+        const_reverse_iterator crend() const noexcept
+        {
+            return const_reverse_iterator(this->_start);
         }
 
     private:
@@ -293,6 +476,38 @@ namespace opendsa
             this->_start._curr = this->_start._first;
             this->_finish._curr
                 = this->_finish._first + num_elms % _max_nodes();
+        }
+
+        void _fill_construct(const value_type &value)
+        {
+            map_pointer curr;
+            try
+            {
+                for (curr = this->_start._node; curr < this->_finish._node;
+                     ++curr)
+                {
+                    for (node_pointer node_curr = *curr;
+                         node_curr < *curr + _max_nodes(); node_curr++)
+                        _Tp_alloc_traits::construct(
+                            _alloc, std::addressof(*node_curr), value);
+                }
+
+                for (node_pointer node_curr = this->_finish._first;
+                     node_curr < this->_finish._curr; node_curr++)
+                    _Tp_alloc_traits::construct(
+                        _alloc, std::addressof(*node_curr), value);
+            }
+            catch (...)
+            {
+                for (map_pointer del_curr = this->_start._node; del_curr < curr;
+                     del_curr++)
+                {
+                    for (node_pointer node_curr = *del_curr;
+                         node_curr < *del_curr + _max_nodes(); node_curr++)
+                        _Tp_alloc_traits::destroy(_alloc,
+                                                  std::addressof(*node_curr));
+                }
+            }
         }
     };
 } // namespace opendsa
