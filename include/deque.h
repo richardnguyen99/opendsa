@@ -118,7 +118,7 @@ namespace opendsa
             return *this;
         }
 
-        deque_iterator operator++(int) const noexcept
+        deque_iterator operator++(int) noexcept
         {
             deque_iterator temp = *this;
             ++*this;
@@ -164,6 +164,8 @@ namespace opendsa
                         + (elm_offset
                            - node_offset * difference_type(get_nnodes()));
             }
+
+            return *this;
         }
 
         deque_iterator &operator-=(difference_type n) noexcept
@@ -199,8 +201,24 @@ namespace opendsa
             return lhs._curr == rhs._curr;
         }
 
+        template <typename _RefR, typename _PtrR>
+        friend bool
+        operator==(const deque_iterator                    &lhs,
+                   const deque_iterator<_Tp, _RefR, _PtrR> &rhs) noexcept
+        {
+            return lhs._curr == rhs._curr;
+        }
+
         friend bool operator!=(const deque_iterator &lhs,
                                const deque_iterator &rhs) noexcept
+        {
+            return !(lhs == rhs);
+        }
+
+        template <typename _RefR, typename _PtrR>
+        friend bool
+        operator!=(const deque_iterator                    &lhs,
+                   const deque_iterator<_Tp, _RefR, _PtrR> &rhs) noexcept
         {
             return !(lhs == rhs);
         }
@@ -212,8 +230,25 @@ namespace opendsa
                                             : (lhs._node < rhs._node);
         }
 
+        template <typename _RefR, typename _PtrR>
+        friend bool
+        operator<(const deque_iterator                    &lhs,
+                  const deque_iterator<_Tp, _RefR, _PtrR> &rhs) noexcept
+        {
+            return (lhs._node == rhs._node) ? (lhs._curr < rhs._curr)
+                                            : (lhs._node < rhs._node);
+        }
+
         friend bool operator>(const deque_iterator &lhs,
                               const deque_iterator &rhs) noexcept
+        {
+            return rhs < lhs;
+        }
+
+        template <typename _RefR, typename _PtrR>
+        friend bool
+        operator>(const deque_iterator                    &lhs,
+                  const deque_iterator<_Tp, _RefR, _PtrR> &rhs) noexcept
         {
             return rhs < lhs;
         }
@@ -224,14 +259,40 @@ namespace opendsa
             return !(rhs < lhs);
         }
 
+        template <typename _RefR, typename _PtrR>
+        friend bool
+        operator<=(const deque_iterator                    &lhs,
+                   const deque_iterator<_Tp, _RefR, _PtrR> &rhs) noexcept
+        {
+            return !(rhs < lhs);
+        }
+
         friend bool operator>=(const deque_iterator &lhs,
                                const deque_iterator &rhs) noexcept
         {
             return !(lhs > rhs);
         }
 
+        template <typename _RefR, typename _PtrR>
+        friend bool
+        operator>=(const deque_iterator                    &lhs,
+                   const deque_iterator<_Tp, _RefR, _PtrR> &rhs) noexcept
+        {
+            return !(lhs > rhs);
+        }
+
         friend difference_type operator-(const deque_iterator &lhs,
                                          const deque_iterator &rhs) noexcept
+        {
+            return difference_type(get_nnodes())
+                       * (lhs._node - rhs._node - int(lhs._node != 0))
+                   + (lhs._curr - lhs._first) + (rhs._last - rhs._curr);
+        }
+
+        template <typename _RefR, typename _PtrR>
+        friend difference_type
+        operator-(const deque_iterator                    &lhs,
+                  const deque_iterator<_Tp, _RefR, _PtrR> &rhs) noexcept
         {
             return difference_type(get_nnodes())
                        * (lhs._node - rhs._node - int(lhs._node != 0))
@@ -361,7 +422,7 @@ namespace opendsa
         }
 
         /**
-         * @brief Creates a %deque based on a initializer list.
+         * @brief Creates a %deque based on an initializer list.
          *
          * @param list  An initializer list.
          *
@@ -374,6 +435,15 @@ namespace opendsa
                              std::random_access_iterator_tag());
         }
 
+        /**
+         * @brief Creates a %deque using deep copying.
+         *
+         * @param other An existing deque object.
+         *
+         * This constructor creates a deque object by copying the elements in
+         * the other deque object without dangling or compromise between each
+         * according element in both objects.
+         */
         deque(const deque &other)
         {
             _range_construct(other.cbegin(), other.cend(),
@@ -420,6 +490,16 @@ namespace opendsa
         const_reverse_iterator crend() const noexcept
         {
             return const_reverse_iterator(this->_start);
+        }
+
+        // Capacities
+        size_type size() const noexcept { return this->_finish - this->_start; }
+
+        bool empty() const noexcept { return this->_finish == this->_start; }
+
+        size_type max_size() const noexcept
+        {
+            return _Tp_alloc_traits::max_size(_alloc);
         }
 
     private:
