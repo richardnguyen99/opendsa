@@ -12,6 +12,7 @@
 #define __OPENDSA_DEQUE_H 1
 
 #include <cstddef>
+#include <initializer_list>
 #include <iterator>
 #include <memory>
 
@@ -311,7 +312,7 @@ namespace opendsa
         using map_pointer  = typename iterator::map_pointer;
 
         /**
-         * @brief Creates an empty %deque
+         * @brief Creates an empty %deque.
          */
         deque() : _start(), _finish(), _map(), _map_size()
         {
@@ -319,9 +320,9 @@ namespace opendsa
         }
 
         /**
-         * @brief Creates a %deque filled with default constructed elements
+         * @brief Creates a %deque filled with default constructed elements.
          *
-         * @param count The number of elements
+         * @param count The number of elements.
          *
          * This constructor creates a deque object by filling it with `n` number
          * of default values of `_Tp`.
@@ -334,13 +335,13 @@ namespace opendsa
         }
 
         /**
-         * @brief Creates a %deque with copies of a given element
+         * @brief Creates a %deque with copies of a given element.
          *
-         * @param count The number of elements
-         * @param value An element to copy
+         * @param count The number of elements.
+         * @param value An element to copy.
          *
          * This constructor creates a deque object by filling it with @a n
-         * copies of @a value
+         * copies of @a value.
          */
         deque(size_type count, const value_type &value)
             : _start(), _finish(), _map(), _map_size()
@@ -349,6 +350,15 @@ namespace opendsa
             _fill_construct(value);
         }
 
+        /**
+         * @brief Creates a %deque based on a range of elements.
+         *
+         * @param first An input iterator to mark the range.
+         * @param last  An input iterator to mark the range.
+         *
+         * This constructor creates a deque object by copying the elements from
+         * [first, last).
+         */
         template <
             typename _InputIter,
             typename = typename std::enable_if<std::is_convertible<
@@ -362,6 +372,20 @@ namespace opendsa
                     _InputIter>::iterator_category();
 
             _range_construct(first, last, iter_traits);
+        }
+
+        /**
+         * @brief Creates a %deque based on a initializer list.
+         *
+         * @param list  An initializer list.
+         *
+         * This constructor creates a deque object by copying the elements in
+         * the initializer list.
+         */
+        deque(std::initializer_list<value_type> list)
+        {
+            _range_construct(list.begin(), list.end(),
+                             std::random_access_iterator_tag());
         }
 
         /**
