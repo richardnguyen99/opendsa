@@ -15,6 +15,7 @@
 #include <initializer_list>
 #include <iterator>
 #include <memory>
+#include <type_traits>
 
 #ifdef DEBUG
 #include <iostream>
@@ -47,9 +48,9 @@ namespace opendsa
     {
     private:
         template <typename _CvTp>
-        using _iter_template
-            = deque_iterator<_Tp, _CvTp,
-                             typename std::pointer_traits<_Ptr>::rebind<_CvTp>>;
+        using _iter_template = deque_iterator<
+            _Tp, _CvTp &,
+            typename std::pointer_traits<_Ptr>::template rebind<_CvTp>>;
 
     public:
         using iterator       = _iter_template<_Tp>;
@@ -70,51 +71,36 @@ namespace opendsa
         node_pointer _last;
         map_pointer  _node;
 
-        deque_iterator() noexcept : _curr(), _first(), _last(), _node()
-        {
-#ifdef DEBUG
-#ifdef ITER
-            std::cout
-                << "======== deque_iterator default constructor is called\n";
-            std::cout << "_curr: " << _curr
-                      << ""
-                         "\n";
-            std::cout << "_curr of type " << typeid(_curr).name() << ": "
-                      << _curr << "\n";
-            std::cout << "_first of type " << typeid(_first).name() << ": "
-                      << _first << "\n";
-            std::cout << "_last of type " << typeid(_last).name() << ": "
-                      << _last << "\n";
-            std::cout << "_node of type " << typeid(_node).name() << ": "
-                      << _node << "\n";
-#endif
-#endif
-        }
-
         static size_type get_nnodes() noexcept
         {
             return get_deque_buffer_size(sizeof(value_type));
         }
 
+        deque_iterator() noexcept : _curr(), _first(), _last(), _node() {}
+
         deque_iterator(node_pointer nptr, map_pointer mptr) noexcept
             : _curr(nptr), _first(*mptr), _last(*mptr + get_nnodes()),
               _node(mptr)
         {
-#ifdef DEBUG
-#ifdef ITER
-            std::cout << "======== deque_iterator constructor is called\n";
-            std::cout << "_curr: " << _curr << "\n";
-            std::cout << "_curr of type " << typeid(_curr).name() << ": "
-                      << _curr << "\n";
-            std::cout << "_first of type " << typeid(_first).name() << ": "
-                      << _first << "\n";
-            std::cout << "_last of type " << typeid(_last).name() << ": "
-                      << _last << "\n";
-            std::cout << "_node of type " << typeid(_node).name() << ": "
-                      << _node << "\n";
-#endif
-#endif
         }
+
+        template <typename _Iter,
+                  typename = typename std::enable_if<std::conjunction<
+                      std::is_same<deque_iterator, const_iterator>,
+                      std::is_same<_Iter, iterator>>::value>::type>
+        deque_iterator(const _Iter &__x) noexcept
+            : _curr(__x._curr), _first(__x._first), _last(__x._last),
+              _node(__x._node)
+        {
+        }
+
+        deque_iterator(const deque_iterator &other) noexcept
+            : _curr(other._curr), _first(other._first), _last(other._last),
+              _node(other._node)
+        {
+        }
+
+        deque_iterator &operator=(const deque_iterator &) = default;
 
         reference operator*() const noexcept { return *_curr; }
 
@@ -160,8 +146,8 @@ namespace opendsa
         deque_iterator &operator+=(difference_type n) noexcept
         {
             // This overloaded operator accepts both positive and negative
-            // values to traverse the %deque_iterator. Therefore, every check
-            // should include both signs.
+            // values to traverse the %deque_iterator. Therefore, every
+            // check should include both signs.
             const difference_type elm_offset = n + (_curr - _first);
 
             if (elm_offset >= 0 && elm_offset < difference_type(get_nnodes()))
@@ -196,9 +182,9 @@ namespace opendsa
          * @param node An existing node in the map
          *
          * This function will control what node in the map is held by this
-         * %iterator. The information is the address of the node itself, and the
-         * capacity. However, how many internal elements, i.e. the bound aka @a
-         * _curr, is defined by the caller method.
+         * %iterator. The information is the address of the node itself, and
+         * the capacity. However, how many internal elements, i.e. the bound
+         * aka @a _curr, is defined by the caller method.
          */
         void set_node(map_pointer node) noexcept
         {
@@ -324,8 +310,8 @@ namespace opendsa
          *
          * @param count The number of elements.
          *
-         * This constructor creates a deque object by filling it with `n` number
-         * of default values of `_Tp`.
+         * This constructor creates a deque object by filling it with `n`
+         * number of default values of `_Tp`.
          */
         explicit deque(size_type count)
             : _start(), _finish(), _map(), _map_size()
@@ -356,8 +342,8 @@ namespace opendsa
          * @param first An input iterator to mark the range.
          * @param last  An input iterator to mark the range.
          *
-         * This constructor creates a deque object by copying the elements from
-         * [first, last).
+         * This constructor creates a deque object by copying the elements
+         * from [first, last).
          */
         template <
             typename _InputIter,
@@ -379,12 +365,18 @@ namespace opendsa
          *
          * @param list  An initializer list.
          *
-         * This constructor creates a deque object by copying the elements in
-         * the initializer list.
+         * This constructor creates a deque object by copying the elements
+         * in the initializer list.
          */
         deque(std::initializer_list<value_type> list)
         {
             _range_construct(list.begin(), list.end(),
+                             std::random_access_iterator_tag());
+        }
+
+        deque(const deque &other)
+        {
+            _range_construct(other.cbegin(), other.cend(),
                              std::random_access_iterator_tag());
         }
 
@@ -504,10 +496,10 @@ namespace opendsa
         }
 
         /**
-         * This helper function initializes a doubly-ended queue that contains
-         * an array of pointers. Each pointer holds an address of a fixed-size
-         * array of elements where the size is determined over the size of each
-         * element.
+         * This helper function initializes a doubly-ended queue that
+         * contains an array of pointers. Each pointer holds an address of a
+         * fixed-size array of elements where the size is determined over
+         * the size of each element.
          */
         void _initialize_map(size_type num_elms)
         {
