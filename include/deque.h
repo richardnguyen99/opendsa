@@ -318,18 +318,58 @@ namespace opendsa
             _initialize_map(0);
         }
 
-        deque(size_type count) : _start(), _finish(), _map(), _map_size()
+        /**
+         * @brief Creates a %deque filled with default constructed elements
+         *
+         * @param count The number of elements
+         *
+         * This constructor creates a deque object by filling it with `n` number
+         * of default values of `_Tp`.
+         */
+        explicit deque(size_type count)
+            : _start(), _finish(), _map(), _map_size()
         {
             _initialize_map(count);
             _fill_construct(value_type());
         }
 
         /**
+         * @brief Creates a %deque with copies of a given element
+         *
+         * @param count The number of elements
+         * @param value An element to copy
+         *
+         * This constructor creates a deque object by filling it with @a n
+         * copies of @a value
+         */
+        deque(size_type count, const value_type &value)
+            : _start(), _finish(), _map(), _map_size()
+        {
+            _initialize_map(count);
+            _fill_construct(value);
+        }
+
+        template <
+            typename _InputIter,
+            typename = typename std::enable_if<std::is_convertible<
+                typename std::iterator_traits<_InputIter>::iterator_category,
+                std::input_iterator_tag>::value>::type>
+        deque(_InputIter first, _InputIter last)
+        {
+            typename std::iterator_traits<_InputIter>::iterator_category
+                iter_traits
+                = typename std::iterator_traits<
+                    _InputIter>::iterator_category();
+
+            _range_construct(first, last, iter_traits);
+        }
+
+        /**
          * @brief Destructor erases elements and reclaims memory.
          *
          *  The dtor only erases the elements, and note that if the elements
-         *  themselves are pointers, the pointed-to memory is not touched in any
-         *  way.  Managing the pointer is the user's responsibility.
+         *  themselves are pointers, the pointed-to memory is not touched in
+         * any way.  Managing the pointer is the user's responsibility.
          */
         ~deque()
         {
@@ -496,6 +536,52 @@ namespace opendsa
                      node_curr < this->_finish._curr; node_curr++)
                     _Tp_alloc_traits::construct(
                         _alloc, std::addressof(*node_curr), value);
+            }
+            catch (...)
+            {
+                for (map_pointer del_curr = this->_start._node; del_curr < curr;
+                     del_curr++)
+                {
+                    for (node_pointer node_curr = *del_curr;
+                         node_curr < *del_curr + _max_nodes(); node_curr++)
+                        _Tp_alloc_traits::destroy(_alloc,
+                                                  std::addressof(*node_curr));
+                }
+                throw;
+            }
+        }
+
+        template <typename _InputIter>
+        void _range_construct(_InputIter first, _InputIter last,
+                              std::forward_iterator_tag)
+        {
+            const size_type n = std::distance(first, last);
+            this->_initialize_map(n);
+
+            map_pointer curr;
+            try
+            {
+                for (curr = this->_start._node; curr < this->_finish._node;
+                     ++curr)
+                {
+                    _InputIter mid = first;
+                    _InputIter tmp = first;
+                    std::advance(mid, _max_nodes());
+
+                    for (size_type i = 0; tmp < mid; tmp++, i++)
+                    {
+                        _Tp_alloc_traits::construct(
+                            _alloc, std::addressof(*(*curr + i)), *tmp);
+                    }
+                    first = mid;
+                }
+
+                _InputIter tmp = first;
+                for (size_type i = 0; tmp < last; tmp++, i++)
+                {
+                    _Tp_alloc_traits::construct(
+                        _alloc, std::addressof(*(*curr + i)), *tmp);
+                }
             }
             catch (...)
             {
