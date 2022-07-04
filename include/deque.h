@@ -17,6 +17,8 @@
 #include <memory>
 #include <type_traits>
 
+#include "helper.h"
+
 #ifdef DEBUG
 #include <iostream>
 #include <typeinfo>
@@ -464,6 +466,29 @@ namespace opendsa
             _deallocate_map(this->_map, this->_map_size);
         }
 
+        // Element access methods
+        reference front() noexcept
+        {
+            _NON_EMPTY_DEQUE("Can't use front() on an empty deque");
+            return *begin();
+        }
+
+        const_reference front() const noexcept { return *cbegin(); }
+
+        reference back() noexcept
+        {
+            iterator tmp = end();
+            --tmp;
+            return *tmp;
+        }
+
+        const_reference back() const noexcept
+        {
+            const_iterator tmp = cend();
+            --tmp;
+            return *tmp;
+        }
+
         iterator begin() noexcept { return this->_start; }
 
         const_iterator cbegin() const noexcept { return this->_start; }
@@ -500,6 +525,32 @@ namespace opendsa
         size_type max_size() const noexcept
         {
             return _Tp_alloc_traits::max_size(_alloc);
+        }
+
+        template <typename... Args>
+        iterator emplace_front(Args &&...args)
+        {
+            if (this->_start._curr != this->_start._first)
+            {
+                _Tp_alloc_traits::construct(_alloc, this->_start._curr - 1,
+                                            std::forward<Args>(args)...);
+                this->_start._curr--;
+            }
+            else
+                _push_front_aux(std::forward<Args>(args)...);
+
+            return begin();
+        }
+
+        template <typename... Args>
+        iterator emplace(const_iterator position, Args &&...args)
+        {
+            if (position._curr == this->_start._curr)
+            {
+            }
+            else if (position._curr == this->_finish._curr)
+            {
+            }
         }
 
     private:
