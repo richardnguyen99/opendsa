@@ -528,7 +528,7 @@ namespace opendsa
         }
 
         template <typename... Args>
-        iterator emplace_front(Args &&...args)
+        reference emplace_front(Args &&...args)
         {
             if (this->_start._curr != this->_start._first)
             {
@@ -539,7 +539,7 @@ namespace opendsa
             else
                 _push_front_aux(std::forward<Args>(args)...);
 
-            return begin();
+            return front();
         }
 
         template <typename... Args>
@@ -665,6 +665,61 @@ namespace opendsa
                 = this->_finish._first + num_elms % _max_nodes();
         }
 
+        void _reallocate_map(size_type nodes_to_add, bool at_front)
+        {
+            const size_type old_num_nodes
+                = this->_finish._node - this->_start._node + 1;
+            const size_type new_num_nodes = old_num_nodes + nodes_to_add;
+
+            map_pointer new_map_start;
+            if (this->_map_size > 2 * new_num_nodes)
+            {
+                new_map_start = this->_map
+                                + (this->_map_size - new_num_nodes) / 2
+                                + (at_front ? nodes_to_add : 0);
+
+                if (new_map_start < this->_start._node)
+                    std::copy(this->_start._node, this->_finish._node + 1,
+                              new_map_start);
+                else
+                    std::copy_backward(this->_start._node,
+                                       this->_finish._node + 1,
+                                       new_map_start + old_num_nodes);
+            }
+            else
+            {
+                const size_type new_map_size
+                    = this->_map_size + std::max(this->_map_size, nodes_to_add)
+                      + 2;
+
+                map_pointer new_map
+                    = _Map_alloc_traits::allocate(_map_alloc, new_map_size);
+                new_map_start = new_map + (new_map_size - new_num_nodes) / 2
+                                + (at_front ? nodes_to_add : 0);
+                std::copy(this->_start._node, this->_finish._node + 1,
+                          new_map_start);
+                this->_deallocate_map(this->_map, this->_map_size);
+                this->_map      = new_map;
+                this->_map_size = new_map_size;
+            }
+
+            this->_start.set_node(new_map_start);
+            this->_finish.set_node(new_map_start + old_num_nodes - 1);
+        }
+
+        void _reserve_map_at_front(size_type nodes_to_add = 1)
+        {
+            if (nodes_to_add > size_type(this->_start._node - this->_map))
+                _reallocate_map(nodes_to_add, true);
+        }
+
+        void _reserve_map_at_back(size_type nodes_to_add = 1)
+        {
+            if (nodes_to_add + 1
+                > this->_map_size - (this->_finish._node - this->_map))
+                _reallocate_map(nodes_to_add, false);
+        }
+
         void _fill_construct(const value_type &value)
         {
             map_pointer curr;
@@ -740,6 +795,37 @@ namespace opendsa
                         _Tp_alloc_traits::destroy(_alloc,
                                                   std::addressof(*node_curr));
                 }
+            }
+        }
+
+        /**
+         * Helper function to insert when _start._curr == _start._first happens
+         */
+        template <typename... Args>
+        void _push_front_aux(Args &&...args)
+        {
+            if (size() == max_size())
+                throw std::runtime_error("cannot create opendsa::deque larger "
+                                         "than max_size(), which is "
+                                         + this->max_size());
+
+            _reserve_map_at_front();
+            *(this->_start._node - 1)
+                = _Tp_alloc_traits::allocate(_alloc, _max_nodes());
+
+            try
+            {
+                this->_start.set_node(this->_start._node - 1);
+                this->_start._curr = this->_start._last - 1;
+                _Tp_alloc_traits::construct(_alloc, this->_start._curr,
+                                            std::forward<Args>(args)...);
+            }
+            catch (...)
+            {
+                ++this->_start;
+                _Tp_alloc_traits::deallocate(_alloc, *(this->_start._node - 1),
+                                             _max_nodes());
+                throw;
             }
         }
     };
