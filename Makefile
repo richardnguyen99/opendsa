@@ -3,6 +3,11 @@ CXXFLAGS := -Wall -Werror -std=c++2a
 
 all: main
 
+check-leak: main
+	@echo "========= Memory leak check with Valgrind ========="
+	valgrind --track-origins=yes --leak-check=full  --error-exitcode=1 -q ./main
+	@echo "\nValgrind has returned a status code of $$?. No memory leak found"
+
 main: main.o
 	$(CXX)  -o main main.o
 

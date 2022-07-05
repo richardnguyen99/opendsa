@@ -562,11 +562,46 @@ namespace opendsa
         {
             if (position._curr == this->_start._curr)
             {
+                emplace_front(std::forward<Args>(args)...);
+                return this->_start;
             }
             else if (position._curr == this->_finish._curr)
             {
+                emplace_back(std::forward<Args>(args)...);
+                return this->_finish;
+            }
+
+            return _insert_aux(begin() + (position - cbegin()),
+                               std::forward<Args>(args)...);
+        }
+
+        void push_front(const value_type &x)
+        {
+            if (this->_start._curr != this->_start._first)
+            {
+                _Tp_alloc_traits::construct(_alloc, this->_start._curr - 1, x);
+                --this->_start._curr;
+            }
+            else
+                push_front(x);
+        }
+
+        void push_front(value_type &&x) { emplace_front(std::move(x)); }
+
+        void push_back(const value_type &x)
+        {
+            if (this->_finish._curr != this->_finish._last - 1)
+            {
+                _Tp_alloc_traits::construct(_alloc, this->_finish._curr, x);
+                ++this->_finish._curr;
+            }
+            else
+            {
+                _push_back_aux(x);
             }
         }
+
+        void push_back(value_type &&x) { emplace_back(std::move(x)); }
 
     private:
         constexpr static size_type INITIAL_MAP_SIZE = 8;
@@ -873,6 +908,35 @@ namespace opendsa
                                              _max_nodes());
                 throw;
             }
+        }
+
+        template <typename... Args>
+        iterator _insert_aux(iterator position, Args &&...args)
+        {
+            value_type copy(std::forward<Args>(args)...);
+
+            difference_type index = position - this->_start;
+            if (static_cast<size_type>(index) < size() / 2)
+            {
+                push_front(std::move(front()));
+                iterator front1 = iterator(this->_start + 1);
+                iterator front2 = iterator(front1 + 1);
+                position        = this->_start + index;
+                iterator pos1   = iterator(position + 1);
+
+                std::move(front2, pos1, front1);
+            }
+            else
+            {
+                push_back(std::move(back()));
+                iterator back1 = iterator(this->_finish - 1);
+                iterator back2 = iterator(back1 - 1);
+                position       = this->_start + index;
+                std::move_backward(position, back2, back1);
+            }
+
+            *position = std::move(copy);
+            return position;
         }
     };
 } // namespace opendsa
