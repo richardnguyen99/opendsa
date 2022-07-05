@@ -543,6 +543,21 @@ namespace opendsa
         }
 
         template <typename... Args>
+        reference emplace_back(Args &&...args)
+        {
+            if (this->_finish._curr != this->_finish._last - 1)
+            {
+                _Tp_alloc_traits::construct(_alloc, this->_finish._curr,
+                                            std::forward<Args>(args)...);
+                ++this->_finish._curr;
+            }
+            else
+                _push_back_aux(std::forward<Args>(args)...);
+
+            return back();
+        }
+
+        template <typename... Args>
         iterator emplace(const_iterator position, Args &&...args)
         {
             if (position._curr == this->_start._curr)
@@ -824,6 +839,37 @@ namespace opendsa
             {
                 ++this->_start;
                 _Tp_alloc_traits::deallocate(_alloc, *(this->_start._node - 1),
+                                             _max_nodes());
+                throw;
+            }
+        }
+
+        /**
+         * Helper function to insert when _finish._curr == _finish._last - 1
+         * happens
+         */
+        template <typename... Args>
+        void _push_back_aux(Args &&...args)
+        {
+            if (size() == max_size())
+                throw std::runtime_error("cannot create opendsa::deque larger "
+                                         "than max_size(), which is "
+                                         + this->max_size());
+
+            _reserve_map_at_back();
+            *(this->_finish._node + 1)
+                = _Tp_alloc_traits::allocate(_alloc, _max_nodes());
+
+            try
+            {
+                _Tp_alloc_traits::construct(_alloc, this->_finish._curr,
+                                            std::forward<Args>(args)...);
+                this->_finish.set_node(this->_finish._node + 1);
+                this->_finish._curr = this->_finish._first;
+            }
+            catch (...)
+            {
+                _Tp_alloc_traits::deallocate(_alloc, *(this->_finish._node + 1),
                                              _max_nodes());
                 throw;
             }
