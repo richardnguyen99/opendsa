@@ -42,8 +42,16 @@ namespace opendsa
         using reverse_iterator       = std::reverse_iterator<iterator>;
         using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
+        /**
+         * @brief Creates an empty %vector
+         */
         vector() : _start(), _finish(), _end() {}
 
+        /**
+         * @brief Creates a %vector filled by default value of _Tp
+         *
+         * @param n The number of elements
+         */
         constexpr explicit vector(size_type n)
         {
             using traits_t = std::allocator_traits<allocator>;

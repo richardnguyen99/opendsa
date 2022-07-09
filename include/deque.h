@@ -1,10 +1,9 @@
 /**
  * @file deque.h
  * @author Richard Nguyen (richard.ng0616@gmail.com)
- * @brief An oversimplified implementation of deque
- * @see docs/deque.h
- * @version 0.1
- * @date 2022-06-25
+ * @brief A doubly-ended queue
+ * @version 0.2
+ * @date 2022-07-02
  *
  * @copyright Copyright (c) 2022
  */
@@ -12,32 +11,55 @@
 #ifndef __OPENDSA_DEQUE_H
 #define __OPENDSA_DEQUE_H 1
 
-#include <algorithm>
 #include <cstddef>
+#include <initializer_list>
 #include <iterator>
 #include <memory>
+#include <type_traits>
+
+#include "helper.h"
 
 #ifdef DEBUG
 #include <iostream>
-#endif // DEBUG
+#include <typeinfo>
+#endif
 
 namespace opendsa
 {
+
     /**
-     * @brief Iterator to control two ends of a deque
+     * @brief Compute the size of element for each node
      *
-     * A deque class will hold two internal %deque_iterator objects to mark the
-     * valid range. Each deque iterator behaves like an array of fixed elements,
-     * which is determined by `get_buffer_size()`. Additionally, the deque
-     * iterators will keep track of both ends of a deque.
+     * @param size_of_type  The size of element
+     *
+     * This function guarantees that each node in the map will hold the same
+     * amount storage, or the same number of elements. This allows memory
+     * management to be more uniform and consistenmemory management to be more
+     * uniform and consistent.
      */
+    constexpr inline std::size_t get_deque_buffer_size(std::size_t size_of_type)
+    {
+        std::size_t DEQUE_DEFAULT_BUFFER_SIZE = 512;
+        return (size_of_type < DEQUE_DEFAULT_BUFFER_SIZE)
+                   ? std::size_t(DEQUE_DEFAULT_BUFFER_SIZE / size_of_type)
+                   : std::size_t(1);
+    }
+
     template <typename _Tp, typename _Ref, typename _Ptr>
     struct deque_iterator
     {
-        using iterator       = deque_iterator<_Tp, _Tp &, _Tp *>;
-        using const_iterator = deque_iterator<_Tp, const _Tp &, const _Tp *>;
-        using item_pointer   = _Tp *;
-        using map_pointer    = _Tp **;
+    private:
+        template <typename _CvTp>
+        using _iter_template = deque_iterator<
+            _Tp, _CvTp &,
+            typename std::pointer_traits<_Ptr>::template rebind<_CvTp>>;
+
+    public:
+        using iterator       = _iter_template<_Tp>;
+        using const_iterator = _iter_template<const _Tp>;
+        using node_pointer   = typename std::pointer_traits<_Ptr>::rebind<_Tp>;
+        using map_pointer =
+            typename std::pointer_traits<_Ptr>::rebind<node_pointer>;
 
         using iterator_category = std::random_access_iterator_tag;
         using value_type        = _Tp;
@@ -46,44 +68,41 @@ namespace opendsa
         using size_type         = std::size_t;
         using difference_type   = std::ptrdiff_t;
 
-        item_pointer _curr;
-        item_pointer _first;
-        item_pointer _last;
-        map_pointer  _map;
+        node_pointer _curr;
+        node_pointer _first;
+        node_pointer _last;
+        map_pointer  _node;
 
-        /**
-         * @brief Compute how many elements in a node.
-         */
-        constexpr static inline std::size_t get_node_elements() noexcept
+        static size_type get_nnodes() noexcept
         {
-            const size_type size = sizeof(_Tp);
-            return (size < 512 ? size_type(512 / size) : size_type(1));
+            return get_deque_buffer_size(sizeof(value_type));
         }
 
-        /**
-         * @brief Construct an empty deque_iterator object
-         */
-        deque_iterator() noexcept
-            : _curr(item_pointer()), _first(item_pointer()),
-              _last(item_pointer()), _map(map_pointer())
+        deque_iterator() noexcept : _curr(), _first(), _last(), _node() {}
+
+        deque_iterator(node_pointer nptr, map_pointer mptr) noexcept
+            : _curr(nptr), _first(*mptr), _last(*mptr + get_nnodes()),
+              _node(mptr)
         {
         }
 
-        /**
-         * @brief Construct a new deque_iterator object
-         */
-        deque_iterator(item_pointer i, map_pointer m) noexcept
-            : _curr(i), _first(*m), _last(*m + get_node_elements()), _map(m)
+        template <typename _Iter,
+                  typename = typename std::enable_if<std::conjunction<
+                      std::is_same<deque_iterator, const_iterator>,
+                      std::is_same<_Iter, iterator>>::value>::type>
+        deque_iterator(const _Iter &__x) noexcept
+            : _curr(__x._curr), _first(__x._first), _last(__x._last),
+              _node(__x._node)
         {
         }
 
-        /**
-         * @brief Construct a const deque_iterator object
-         */
-        deque_iterator(const iterator &i) noexcept
-            : _curr(i._curr), _first(i._first), _last(i._last), _map(i._map)
+        deque_iterator(const deque_iterator &other) noexcept
+            : _curr(other._curr), _first(other._first), _last(other._last),
+              _node(other._node)
         {
         }
+
+        deque_iterator &operator=(const deque_iterator &) = default;
 
         reference operator*() const noexcept { return *_curr; }
 
@@ -94,7 +113,7 @@ namespace opendsa
             ++_curr;
             if (_curr == _last)
             {
-                this->set_node(_map + 1);
+                set_node(_node + 1);
                 _curr = _first;
             }
 
@@ -103,469 +122,822 @@ namespace opendsa
 
         deque_iterator operator++(int) noexcept
         {
-            deque_iterator tmp = *this;
-            ++(*this);
-            return tmp;
+            deque_iterator temp = *this;
+            ++*this;
+            return temp;
         }
 
         deque_iterator &operator--() noexcept
         {
             if (_curr == _first)
             {
-                this->set_node(_map - 1);
+                set_node(_node - 1);
                 _curr = _last;
             }
             --_curr;
             return *this;
         }
 
-        deque_iterator operator--(int) noexcept
+        deque_iterator operator--(int) const noexcept
         {
-            deque_iterator tmp = *this;
-            --(*this);
-            return tmp;
+            deque_iterator temp = *this;
+            ++*this;
+            return temp;
         }
 
         deque_iterator &operator+=(difference_type n) noexcept
         {
-            const difference_type offset = n + (_curr - _first);
-            if (offset >= 0 && offset < difference_type(get_node_elements()))
+            // This overloaded operator accepts both positive and negative
+            // values to traverse the %deque_iterator. Therefore, every
+            // check should include both signs.
+            const difference_type elm_offset = n + (_curr - _first);
+
+            if (elm_offset >= 0 && elm_offset < difference_type(get_nnodes()))
                 _curr += n;
             else
             {
                 const difference_type node_offset
-                    = offset > 0 ? offset / difference_type(get_node_elements())
-                                 : -difference_type((-offset - 1)
-                                                    / get_node_elements())
-                                       - 1;
-                this->set_node(_map + node_offset);
-                _curr = _first + (offset - node_offset)
-                        + difference_type(get_node_elements());
+                    = elm_offset > 0
+                          ? elm_offset / difference_type(get_nnodes())
+                          : -difference_type((-elm_offset - 1) / get_nnodes())
+                                - 1;
+                set_node(_node + node_offset);
+                _curr = _first
+                        + (elm_offset
+                           - node_offset * difference_type(get_nnodes()));
             }
 
             return *this;
         }
 
-        deque_iterator operator+(difference_type n) const noexcept
-        {
-            deque_iterator tmp = *this;
-            return tmp += n;
-        }
-
         deque_iterator &operator-=(difference_type n) noexcept
         {
-            return *this += -n;
+            return (*this += -n);
         }
 
-        deque_iterator operator-(difference_type n) const noexcept
+        reference operator[](difference_type n) const noexcept
         {
-            deque_iterator tmp = *this;
-            return tmp -= n;
+            return *(*this + n);
         }
 
-        void set_node(map_pointer new_node) noexcept
+        /**
+         * @brief Mainly control traversal amongst nodes in the map
+         *
+         * @param node An existing node in the map
+         *
+         * This function will control what node in the map is held by this
+         * %iterator. The information is the address of the node itself, and
+         * the capacity. However, how many internal elements, i.e. the bound
+         * aka @a _curr, is defined by the caller method.
+         */
+        void set_node(map_pointer node) noexcept
         {
-            this->_map   = new_node;
-            this->_first = *new_node;
-            this->_last  = this->_first + difference_type(get_node_elements());
+            _node  = node;
+            _first = *node;
+            _last  = _first + get_nnodes();
+        }
+
+        friend bool operator==(const deque_iterator &lhs,
+                               const deque_iterator &rhs) noexcept
+        {
+            return lhs._curr == rhs._curr;
+        }
+
+        template <typename _RefR, typename _PtrR>
+        friend bool
+        operator==(const deque_iterator                    &lhs,
+                   const deque_iterator<_Tp, _RefR, _PtrR> &rhs) noexcept
+        {
+            return lhs._curr == rhs._curr;
+        }
+
+        friend bool operator!=(const deque_iterator &lhs,
+                               const deque_iterator &rhs) noexcept
+        {
+            return !(lhs == rhs);
+        }
+
+        template <typename _RefR, typename _PtrR>
+        friend bool
+        operator!=(const deque_iterator                    &lhs,
+                   const deque_iterator<_Tp, _RefR, _PtrR> &rhs) noexcept
+        {
+            return !(lhs == rhs);
+        }
+
+        friend bool operator<(const deque_iterator &lhs,
+                              const deque_iterator &rhs) noexcept
+        {
+            return (lhs._node == rhs._node) ? (lhs._curr < rhs._curr)
+                                            : (lhs._node < rhs._node);
+        }
+
+        template <typename _RefR, typename _PtrR>
+        friend bool
+        operator<(const deque_iterator                    &lhs,
+                  const deque_iterator<_Tp, _RefR, _PtrR> &rhs) noexcept
+        {
+            return (lhs._node == rhs._node) ? (lhs._curr < rhs._curr)
+                                            : (lhs._node < rhs._node);
+        }
+
+        friend bool operator>(const deque_iterator &lhs,
+                              const deque_iterator &rhs) noexcept
+        {
+            return rhs < lhs;
+        }
+
+        template <typename _RefR, typename _PtrR>
+        friend bool
+        operator>(const deque_iterator                    &lhs,
+                  const deque_iterator<_Tp, _RefR, _PtrR> &rhs) noexcept
+        {
+            return rhs < lhs;
+        }
+
+        friend bool operator<=(const deque_iterator &lhs,
+                               const deque_iterator &rhs) noexcept
+        {
+            return !(rhs < lhs);
+        }
+
+        template <typename _RefR, typename _PtrR>
+        friend bool
+        operator<=(const deque_iterator                    &lhs,
+                   const deque_iterator<_Tp, _RefR, _PtrR> &rhs) noexcept
+        {
+            return !(rhs < lhs);
+        }
+
+        friend bool operator>=(const deque_iterator &lhs,
+                               const deque_iterator &rhs) noexcept
+        {
+            return !(lhs > rhs);
+        }
+
+        template <typename _RefR, typename _PtrR>
+        friend bool
+        operator>=(const deque_iterator                    &lhs,
+                   const deque_iterator<_Tp, _RefR, _PtrR> &rhs) noexcept
+        {
+            return !(lhs > rhs);
+        }
+
+        friend difference_type operator-(const deque_iterator &lhs,
+                                         const deque_iterator &rhs) noexcept
+        {
+            return difference_type(get_nnodes())
+                       * (lhs._node - rhs._node - int(lhs._node != 0))
+                   + (lhs._curr - lhs._first) + (rhs._last - rhs._curr);
+        }
+
+        template <typename _RefR, typename _PtrR>
+        friend difference_type
+        operator-(const deque_iterator                    &lhs,
+                  const deque_iterator<_Tp, _RefR, _PtrR> &rhs) noexcept
+        {
+            return difference_type(get_nnodes())
+                       * (lhs._node - rhs._node - int(lhs._node != 0))
+                   + (lhs._curr - lhs._first) + (rhs._last - rhs._curr);
+        }
+
+        friend deque_iterator operator+(const deque_iterator &self,
+                                        difference_type       n) noexcept
+        {
+            deque_iterator tmp = self;
+            tmp += n;
+            return tmp;
+        }
+
+        friend deque_iterator operator+(difference_type       n,
+                                        const deque_iterator &self) noexcept
+        {
+            return (self + n);
+        }
+
+        friend deque_iterator operator-(const deque_iterator &self,
+                                        difference_type       n) noexcept
+        {
+            deque_iterator tmp = self;
+            tmp -= n;
+            return tmp;
+        }
+
+        friend deque_iterator operator-(difference_type       n,
+                                        const deque_iterator &self) noexcept
+        {
+            return (self - n);
         }
     };
-
-    template <typename _Tp, typename _Ref, typename _Ptr>
-    inline bool operator==(const deque_iterator<_Tp, _Ref, _Ptr> &lhs,
-                           const deque_iterator<_Tp, _Ref, _Ptr> &rhs) noexcept
-    {
-        return rhs._curr == lhs._curr;
-    }
-
-    template <typename _Tp, typename _Ref, typename _Ptr>
-    inline bool operator!=(const deque_iterator<_Tp, _Ref, _Ptr> &lhs,
-                           const deque_iterator<_Tp, _Ref, _Ptr> &rhs) noexcept
-    {
-        return rhs._curr != lhs._curr;
-    }
-
-    template <typename _Tp, typename _Ref, typename _Ptr>
-    inline typename deque_iterator<_Tp, _Ref, _Ptr>::difference_type
-    operator-(const deque_iterator<_Tp, _Ref, _Ptr> &lhs,
-              const deque_iterator<_Tp, _Ref, _Ptr> &rhs) noexcept
-    {
-        using iterator        = deque_iterator<_Tp, _Ref, _Ptr>;
-        using difference_type = typename iterator::difference_type;
-
-        // Calculate how far two iterators
-        const difference_type diff_on_node
-            = iterator::get_node_elements() * (lhs._map - rhs._map - 1);
-
-        const difference_type diff_on_lhs = (lhs._curr - rhs._first);
-        const difference_type diff_on_rhs = (rhs._last - rhs._curr);
-
-        return diff_on_node + diff_on_lhs + diff_on_rhs;
-    }
-
-    template <typename _Tp, typename _Ref1, typename _Ptr1, typename _Ref2,
-              typename _Ptr2>
-    inline typename deque_iterator<_Tp, _Ref1, _Ptr1>::difference_type
-    operator-(const deque_iterator<_Tp, _Ref1, _Ptr1> &lhs,
-              const deque_iterator<_Tp, _Ref2, _Ptr2> &rhs)
-    {
-        using iterator        = deque_iterator<_Tp, _Ref1, _Ptr1>;
-        using difference_type = typename iterator::difference_type;
-
-        // Calculate how far two iterators
-        const difference_type diff_on_node
-            = iterator::get_node_elements() * (lhs._map - rhs._map - 1);
-
-        const difference_type diff_on_lhs = (lhs._curr - rhs._first);
-        const difference_type diff_on_rhs = (rhs._last - rhs._curr);
-
-        return diff_on_node + diff_on_lhs + diff_on_rhs;
-    }
 
     template <typename _Tp, typename _Alloc = std::allocator<_Tp>>
     class deque
     {
     private:
-        using _Tp_alloc_traits = std::allocator_traits<_Alloc>;
-        using _Ptr             = typename _Tp_alloc_traits::pointer;
-        using _Ptr_const       = typename _Tp_alloc_traits::const_pointer;
+        using _Tp_alloc_type =
+            typename std::allocator_traits<_Alloc>::rebind_alloc<_Tp>;
+        using _Tp_alloc_traits = std::allocator_traits<_Tp_alloc_type>;
+        using _Tp_ptr          = typename _Tp_alloc_traits::pointer;
+        using _Tp_ptr_const    = typename _Tp_alloc_traits::const_pointer;
 
-        using _Map_alloc =
-            typename _Tp_alloc_traits::template rebind_alloc<_Ptr>;
-        using _Map_alloc_traits = std::allocator_traits<_Map_alloc>;
-        using _Map_ptr = typename deque_iterator<_Tp, _Tp &, _Ptr>::map_pointer;
+        using _Map_alloc_type =
+            typename std::allocator_traits<_Alloc>::rebind_alloc<_Tp_ptr>;
+        using _Map_alloc_traits = std::allocator_traits<_Map_alloc_type>;
 
     public:
-        using value_allocator_type = _Alloc;
-        using map_allocator_type   = _Map_alloc;
-        using iterator             = deque_iterator<_Tp, _Tp &, _Ptr>;
-        using const_iterator   = deque_iterator<_Tp, const _Tp &, _Ptr_const>;
-        using reverse_iterator = std::reverse_iterator<iterator>;
-        using const_reverse_iterator = std::reverse_iterator<const_iterator>;
-
         using value_type      = _Tp;
-        using pointer         = _Ptr;
-        using const_pointer   = _Ptr_const;
         using reference       = _Tp &;
         using const_reference = const _Tp &;
+        using pointer         = _Tp_ptr;
+        using const_pointer   = _Tp_ptr_const;
         using size_type       = std::size_t;
         using difference_type = std::ptrdiff_t;
+        using iterator        = deque_iterator<_Tp, _Tp &, _Tp_ptr>;
+        using const_iterator  = deque_iterator<_Tp, const _Tp &, _Tp_ptr_const>;
+        using reverse_iterator       = std::reverse_iterator<iterator>;
+        using const_reverse_iterator = std::reverse_iterator<const_iterator>;
+
+        using node_pointer = typename iterator::node_pointer;
+        using map_pointer  = typename iterator::map_pointer;
 
         /**
          * @brief Creates an empty %deque.
          */
-        constexpr deque()
-            : _map(), _map_size(0), _start(), _finish(), _alloc(), _map_alloc()
+        deque() : _start(), _finish(), _map(), _map_size()
         {
             _initialize_map(0);
         }
 
         /**
-         * @brief Creates a deque filled with @a n default values of @a _Tp.
+         * @brief Creates a %deque filled with default constructed elements.
          *
-         * @param n The number of elements to initialize.
+         * @param count The number of elements.
          *
-         * This constructor fills the %deque with @a n default constructed
-         * elements of type @a _Tp. A default constructed element can be the
-         * default value or called via default constructor. Thus, if _Tp is a
-         * user-defined class, a default constructor should be supported.
+         * This constructor creates a deque object by filling it with `n`
+         * number of default values of `_Tp`.
          */
-        explicit deque(size_type n)
-            : _map(), _map_size(n), _start(), _finish(), _alloc(), _map_alloc()
+        explicit deque(size_type count)
+            : _start(), _finish(), _map(), _map_size()
         {
-            _initialize_map(n);
-            _default_construct();
+            _initialize_map(count);
+            _fill_construct(value_type());
         }
 
         /**
-         * @brief Creates a deque filled with @a n copies of @a value.
+         * @brief Creates a %deque with copies of a given element.
          *
-         * @param n The number of elements to initialize.
-         * @param value An element to create copies.
+         * @param count The number of elements.
+         * @param value An element to copy.
          *
-         * This constructor fills the %deque with @a n copies of @a value. If @n
-         * value is a user-defined type, a copy constructor should be available.
+         * This constructor creates a deque object by filling it with @a n
+         * copies of @a value.
          */
-        constexpr deque(size_type n, const value_type &value)
-            : _map(), _map_size(n), _start(), _finish(), _alloc(), _map_alloc()
+        deque(size_type count, const value_type &value)
+            : _start(), _finish(), _map(), _map_size()
         {
-            _initialize_map(n);
+            _initialize_map(count);
             _fill_construct(value);
-#ifdef DEBUG
-            std::cout << "Deque's count copyies constructor is called\n";
-            std::cout << "New deque diff: " << this->size() << "\n";
-            std::for_each(this->_start, this->_finish,
-                          [](const auto &curr) { std::cout << curr << " "; });
-            std::cout << "\n\n";
-#endif
         }
 
         /**
-         * @brief  Creates a deque by copying another.
+         * @brief Creates a %deque based on a range of elements.
          *
-         * @param other Another %deque of same type and allocator.
+         * @param first An input iterator to mark the range.
+         * @param last  An input iterator to mark the range.
          *
-         * This constructor creates the new %deque by filling each element with
-         * the according element from @a other.
+         * This constructor creates a deque object by copying the elements
+         * from [first, last).
          */
-        constexpr deque(const deque &other)
-            : _map(), _map_size(other._map_size), _start(), _finish(), _alloc(),
-              _map_alloc()
+        template <
+            typename _InputIter,
+            typename = typename std::enable_if<std::is_convertible<
+                typename std::iterator_traits<_InputIter>::iterator_category,
+                std::input_iterator_tag>::value>::type>
+        deque(_InputIter first, _InputIter last)
         {
-            _initialize_map(other.size());
-            std::__uninitialized_copy_a(other.cbegin(), other.cend(), _start,
-                                        _alloc);
+            typename std::iterator_traits<_InputIter>::iterator_category
+                iter_traits
+                = typename std::iterator_traits<
+                    _InputIter>::iterator_category();
 
-#ifdef DEBUG
-            std::cout << "Deque's copy constructor is called\n";
-            std::cout << "Other deque diff: " << (other.cend() - other.cbegin())
-                      << "\n";
-            std::for_each(other.cbegin(), other.cend(),
-                          [](const auto &curr) { std::cout << curr << " "; });
-            std::cout << "\n";
-            std::cout << "New deque diff: " << (this->_finish - this->_start)
-                      << "\n";
-            std::for_each(this->_start, this->_finish,
-                          [](const auto &curr) { std::cout << curr << " "; });
-            std::cout << "\n\n";
-#endif
+            _range_construct(first, last, iter_traits);
         }
 
         /**
-         * @brief  Creates a deque by moving another.
+         * @brief Creates a %deque based on an initializer list.
          *
-         * This constructor creates the new %deque by moving each element from
-         * %other to the new one.
+         * @param list  An initializer list.
+         *
+         * This constructor creates a deque object by copying the elements
+         * in the initializer list.
          */
-        constexpr deque(deque &&other)
-            : _map(), _map_size(other._map_size), _start(other._start),
-              _finish(other._finish), _alloc(), _map_alloc()
+        deque(std::initializer_list<value_type> list)
         {
-
-            other._start    = iterator();
-            other._finish   = iterator();
-            other._map      = _Map_ptr();
-            other._map_size = 0;
-
-#ifdef DEBUG
-            std::cout << "Deque's move constructor is called\n";
-            std::cout << "Other deque diff: " << other.size() << "\n";
-            std::for_each(other.cbegin(), other.cend(),
-                          [](const auto &curr) { std::cout << curr << " "; });
-            std::cout << "New deque diff: " << this->size() << "\n";
-            std::for_each(this->cbegin(), this->cend(),
-                          [](const auto &curr) { std::cout << curr << " "; });
-            std::cout << "\n\n";
-#endif
-        }
-
-        // Iterators
-
-        /**
-         * @brief Gets a read/write iterator pointing to the first element in
-         * %deque.
-         */
-        constexpr iterator begin() noexcept { return this->_start; }
-
-        /**
-         * @brief  Gets a read-only iterator pointing to the first element in
-         * %deque.
-         */
-        constexpr const_iterator cbegin() const noexcept
-        {
-            return this->_start;
+            _range_construct(list.begin(), list.end(),
+                             std::random_access_iterator_tag());
         }
 
         /**
-         * @brief Gets a read/write iterator pointing to the end of %deque (not
-         * the last element).
+         * @brief Creates a %deque using deep copying.
+         *
+         * @param other An existing deque object.
+         *
+         * This constructor creates a deque object by copying the elements in
+         * the other deque object without dangling or compromise between each
+         * according element in both objects.
          */
-        constexpr iterator end() noexcept { return this->_finish; }
+        deque(const deque &other)
+        {
+            _range_construct(other.cbegin(), other.cend(),
+                             std::random_access_iterator_tag());
+        }
 
         /**
-         * @brief  Gets a read-only iterator pointing to the end of %deque (not
-         * the last element)
+         * @brief Destructor erases elements and reclaims memory.
+         *
+         *  The dtor only erases the elements, and note that if the elements
+         *  themselves are pointers, the pointed-to memory is not touched in
+         * any way.  Managing the pointer is the user's responsibility.
          */
-        constexpr const_iterator cend() const noexcept { return this->_finish; }
+        ~deque()
+        {
+            _destroy_data(this->_start, this->_finish);
+            _deallocate_nodes(this->_start._node, this->_finish._node);
+            _deallocate_map(this->_map, this->_map_size);
+        }
 
-        /**
-         * @brief  Gets a read/write reverse iterator pointing to the last
-         * element of %deque.
-         */
-        constexpr reverse_iterator rbegin() noexcept
+        // Element access methods
+        reference front() noexcept
+        {
+            _NON_EMPTY_DEQUE("Can't use front() on an empty deque");
+            return *begin();
+        }
+
+        const_reference front() const noexcept { return *cbegin(); }
+
+        reference back() noexcept
+        {
+            iterator tmp = end();
+            --tmp;
+            return *tmp;
+        }
+
+        const_reference back() const noexcept
+        {
+            const_iterator tmp = cend();
+            --tmp;
+            return *tmp;
+        }
+
+        iterator begin() noexcept { return this->_start; }
+
+        const_iterator cbegin() const noexcept { return this->_start; }
+
+        iterator end() noexcept { return this->_finish; }
+
+        const_iterator cend() const noexcept { return this->_finish; }
+
+        reverse_iterator rbegin() noexcept
         {
             return reverse_iterator(this->_finish);
         }
 
-        /**
-         * @brief  Gets a read-only reverse iterator pointing to the last
-         * element of %deque.
-         */
-        constexpr const_reverse_iterator crbegin() const noexcept
+        const_reverse_iterator crbegin() const noexcept
         {
             return const_reverse_iterator(this->_finish);
         }
 
-        /**
-         * @brief Gets a read/write reverse iterator pointing to the beginning
-         * of %deque (not the first element).
-         */
-        constexpr reverse_iterator rend() noexcept
+        reverse_iterator rend() noexcept
         {
             return reverse_iterator(this->_start);
         }
 
-        /**
-         * @brief Gets a read-only reverse iterator pointing to the beginning
-         * of %deque (not the first element).
-         */
-        constexpr const_reverse_iterator crend() const noexcept
+        const_reverse_iterator crend() const noexcept
         {
-            return const_reverse_iterator(this->_finish);
+            return const_reverse_iterator(this->_start);
         }
 
-        // Capacity
-        /**
-         * @brief Returns the number of elements in the container.
-         *
-         * @return constexpr size_type
-         */
-        constexpr size_type size() const noexcept
-        {
-            return std::max(this->_finish - this->_start, difference_type(0));
-        }
+        // Capacities
+        size_type size() const noexcept { return this->_finish - this->_start; }
 
-        constexpr bool empty() const noexcept
-        {
-            return this->_finish == this->_start;
-        }
+        bool empty() const noexcept { return this->_finish == this->_start; }
 
-        constexpr bool max_size() const noexcept
+        size_type max_size() const noexcept
         {
             return _Tp_alloc_traits::max_size(_alloc);
         }
 
+        template <typename... Args>
+        reference emplace_front(Args &&...args)
+        {
+            if (this->_start._curr != this->_start._first)
+            {
+                _Tp_alloc_traits::construct(_alloc, this->_start._curr - 1,
+                                            std::forward<Args>(args)...);
+                this->_start._curr--;
+            }
+            else
+                _push_front_aux(std::forward<Args>(args)...);
+
+            return front();
+        }
+
+        template <typename... Args>
+        reference emplace_back(Args &&...args)
+        {
+            if (this->_finish._curr != this->_finish._last - 1)
+            {
+                _Tp_alloc_traits::construct(_alloc, this->_finish._curr,
+                                            std::forward<Args>(args)...);
+                ++this->_finish._curr;
+            }
+            else
+                _push_back_aux(std::forward<Args>(args)...);
+
+            return back();
+        }
+
+        template <typename... Args>
+        iterator emplace(const_iterator position, Args &&...args)
+        {
+            if (position._curr == this->_start._curr)
+            {
+                emplace_front(std::forward<Args>(args)...);
+                return this->_start;
+            }
+            else if (position._curr == this->_finish._curr)
+            {
+                emplace_back(std::forward<Args>(args)...);
+                return this->_finish;
+            }
+
+            return _insert_aux(begin() + (position - cbegin()),
+                               std::forward<Args>(args)...);
+        }
+
+        void push_front(const value_type &x)
+        {
+            if (this->_start._curr != this->_start._first)
+            {
+                _Tp_alloc_traits::construct(_alloc, this->_start._curr - 1, x);
+                --this->_start._curr;
+            }
+            else
+                push_front(x);
+        }
+
+        void push_front(value_type &&x) { emplace_front(std::move(x)); }
+
+        void push_back(const value_type &x)
+        {
+            if (this->_finish._curr != this->_finish._last - 1)
+            {
+                _Tp_alloc_traits::construct(_alloc, this->_finish._curr, x);
+                ++this->_finish._curr;
+            }
+            else
+            {
+                _push_back_aux(x);
+            }
+        }
+
+        void push_back(value_type &&x) { emplace_back(std::move(x)); }
+
     private:
-        _Map_ptr   _map;
-        size_type  _map_size;
-        iterator   _start;
-        iterator   _finish;
-        _Alloc     _alloc;
-        _Map_alloc _map_alloc;
+        constexpr static size_type INITIAL_MAP_SIZE = 8;
 
-        _Ptr _allocate_node()
+        iterator        _start;
+        iterator        _finish;
+        map_pointer     _map;
+        size_type       _map_size;
+        _Tp_alloc_type  _alloc;
+        _Map_alloc_type _map_alloc;
+
+        static size_type _max_nodes()
         {
-            return _Tp_alloc_traits::allocate(_alloc,
-                                              iterator::get_node_elements());
+            return get_deque_buffer_size(sizeof(value_type));
         }
 
-        void _deallocate_node(_Ptr p)
+        void _destroy_data(iterator first, iterator last)
         {
-            _Tp_alloc_traits::deallocate(_alloc, p,
-                                         iterator::get_node_elements());
+            for (map_pointer curr = first._node + 1; curr < last._node; curr++)
+            {
+                for (node_pointer node_curr = *curr;
+                     node_curr < *curr + _max_nodes(); node_curr++)
+                    _Tp_alloc_traits::destroy(_alloc,
+                                              std::addressof(*node_curr));
+            }
+
+            if (first._node != last._node)
+            {
+                for (node_pointer curr = first._curr; curr != first._last;
+                     curr++)
+                    _Tp_alloc_traits::destroy(_alloc, std::addressof(*curr));
+                for (node_pointer curr = last._first; curr != last._curr;
+                     curr++)
+                    _Tp_alloc_traits::destroy(_alloc, std::addressof(*curr));
+            }
+            else
+            {
+                for (node_pointer curr = first._curr; curr != last._curr + 1;
+                     curr++)
+                    _Tp_alloc_traits::destroy(_alloc, std::addressof(*curr));
+            }
         }
 
-        void _destroy_nodes(_Map_ptr start, _Map_ptr finish)
+        void _deallocate_nodes(map_pointer first, map_pointer last)
         {
-            for (_Map_ptr curr = start; curr < finish; ++curr)
-                _deallocate_node(*curr);
+            for (map_pointer curr = first; curr != last + 1; curr++)
+                _Tp_alloc_traits::deallocate(_alloc, std::addressof(**curr),
+                                             _max_nodes());
         }
 
-        void _create_nodes(_Map_ptr start, _Map_ptr finish)
+        void _deallocate_map(map_pointer map, size_type map_size)
         {
-            _Map_ptr curr;
+            _Map_alloc_traits::deallocate(_map_alloc, this->_map,
+                                          this->_map_size);
+        }
 
+        void _create_nodes(map_pointer map_start, map_pointer map_finish)
+        {
+
+            map_pointer curr;
             try
             {
-                for (curr = start; curr < finish; curr++)
-                    *curr = _allocate_node();
+                for (curr = map_start; curr < map_finish; curr++)
+                {
+                    *curr = _Tp_alloc_traits::allocate(_alloc, _max_nodes());
+                }
             }
             catch (...)
             {
-                _destroy_nodes(start, curr);
-                throw; // throw again so that the caller to this function
-                       // catches an exception
+                _deallocate_nodes(map_start, curr);
+                throw;
             }
         }
 
-        void _deallocate_map(_Map_ptr p, size_type n) noexcept
-        {
-            _Map_alloc_traits::deallocate(_map_alloc, p, n);
-        }
-
         /**
-         * @brief Initialize deque used in constructors
+         * This helper function initializes a doubly-ended queue that
+         * contains an array of pointers. Each pointer holds an address of a
+         * fixed-size array of elements where the size is determined over
+         * the size of each element.
          */
-        void _initialize_map(size_type num_elems)
+        void _initialize_map(size_type num_elms)
         {
-            const size_type num_nodes
-                = (num_elems / iterator::get_node_elements() + 1);
+            const size_type num_nodes = (num_elms / _max_nodes() + 1);
 
-            this->_map_size = std::max(size_type(8), size_type(num_nodes + 2));
-            this->_map = _Map_alloc_traits::allocate(_map_alloc, num_nodes);
+            this->_map_size
+                = std::max(INITIAL_MAP_SIZE, size_type(num_nodes + 2));
+            this->_map
+                = _Map_alloc_traits::allocate(_map_alloc, this->_map_size);
 
-            _Map_ptr m_start = (this->_map + (this->_map_size - num_nodes) / 2);
-            _Map_ptr m_finish = m_start + num_nodes;
+            for (size_type i = 0; i < this->_map_size; i++)
+                this->_map[i] = nullptr;
+
+            map_pointer map_start
+                = this->_map + (this->_map_size - num_nodes) / 2;
+            map_pointer map_finish = map_start + num_nodes;
 
             try
             {
-                _create_nodes(m_start, m_finish);
+                _create_nodes(map_start, map_finish);
             }
             catch (...)
             {
                 _deallocate_map(this->_map, this->_map_size);
-                this->_map      = _Map_ptr();
-                this->_map_size = 0;
                 throw;
             }
 
-            this->_start.set_node(m_start);
-            this->_finish.set_node(m_finish - 1);
-            this->_start._curr  = this->_start._first;
-            this->_finish._curr = this->_finish._first
-                                  + num_elems % iterator::get_node_elements();
+            this->_start.set_node(map_start);
+            this->_finish.set_node(map_finish - 1);
+            this->_start._curr = this->_start._first;
+            this->_finish._curr
+                = this->_finish._first + num_elms % _max_nodes();
         }
 
-        void _default_construct()
+        void _reallocate_map(size_type nodes_to_add, bool at_front)
         {
-            _Map_ptr curr;
-            try
+            const size_type old_num_nodes
+                = this->_finish._node - this->_start._node + 1;
+            const size_type new_num_nodes = old_num_nodes + nodes_to_add;
+
+            map_pointer new_map_start;
+            if (this->_map_size > 2 * new_num_nodes)
             {
-                for (curr = this->_start._map; curr < this->_finish._map;
-                     ++curr)
-                    std::__uninitialized_default_a(
-                        *curr, *curr + iterator::get_node_elements(), _alloc);
-                std::__uninitialized_default_a(this->_finish._first,
-                                               this->_finish._curr, _alloc);
+                new_map_start = this->_map
+                                + (this->_map_size - new_num_nodes) / 2
+                                + (at_front ? nodes_to_add : 0);
+
+                if (new_map_start < this->_start._node)
+                    std::copy(this->_start._node, this->_finish._node + 1,
+                              new_map_start);
+                else
+                    std::copy_backward(this->_start._node,
+                                       this->_finish._node + 1,
+                                       new_map_start + old_num_nodes);
             }
-            catch (...)
+            else
             {
-                std::_Destroy(this->_start, iterator(*curr, curr), _alloc);
-                throw;
+                const size_type new_map_size
+                    = this->_map_size + std::max(this->_map_size, nodes_to_add)
+                      + 2;
+
+                map_pointer new_map
+                    = _Map_alloc_traits::allocate(_map_alloc, new_map_size);
+                new_map_start = new_map + (new_map_size - new_num_nodes) / 2
+                                + (at_front ? nodes_to_add : 0);
+                std::copy(this->_start._node, this->_finish._node + 1,
+                          new_map_start);
+                this->_deallocate_map(this->_map, this->_map_size);
+                this->_map      = new_map;
+                this->_map_size = new_map_size;
             }
+
+            this->_start.set_node(new_map_start);
+            this->_finish.set_node(new_map_start + old_num_nodes - 1);
+        }
+
+        void _reserve_map_at_front(size_type nodes_to_add = 1)
+        {
+            if (nodes_to_add > size_type(this->_start._node - this->_map))
+                _reallocate_map(nodes_to_add, true);
+        }
+
+        void _reserve_map_at_back(size_type nodes_to_add = 1)
+        {
+            if (nodes_to_add + 1
+                > this->_map_size - (this->_finish._node - this->_map))
+                _reallocate_map(nodes_to_add, false);
         }
 
         void _fill_construct(const value_type &value)
         {
-            _Map_ptr curr;
+            map_pointer curr;
             try
             {
-                for (curr = this->_start._map; curr < this->_finish._map;
+                for (curr = this->_start._node; curr < this->_finish._node;
                      ++curr)
-                    std::__uninitialized_fill_a(
-                        *curr, *curr + iterator::get_node_elements(), value,
-                        _alloc);
-                std::__uninitialized_fill_a(this->_finish._first,
-                                            this->_finish._curr, value, _alloc);
+                {
+                    for (node_pointer node_curr = *curr;
+                         node_curr < *curr + _max_nodes(); node_curr++)
+                        _Tp_alloc_traits::construct(
+                            _alloc, std::addressof(*node_curr), value);
+                }
+
+                for (node_pointer node_curr = this->_finish._first;
+                     node_curr < this->_finish._curr; node_curr++)
+                    _Tp_alloc_traits::construct(
+                        _alloc, std::addressof(*node_curr), value);
             }
             catch (...)
             {
-                std::_Destroy(this->_start, iterator(*curr, curr), _alloc);
+                for (map_pointer del_curr = this->_start._node; del_curr < curr;
+                     del_curr++)
+                {
+                    for (node_pointer node_curr = *del_curr;
+                         node_curr < *del_curr + _max_nodes(); node_curr++)
+                        _Tp_alloc_traits::destroy(_alloc,
+                                                  std::addressof(*node_curr));
+                }
                 throw;
             }
         }
 
-        void _copy_construct(iterator first, iterator last) {}
+        template <typename _InputIter>
+        void _range_construct(_InputIter first, _InputIter last,
+                              std::forward_iterator_tag)
+        {
+            const size_type n = std::distance(first, last);
+            this->_initialize_map(n);
+
+            map_pointer curr;
+            try
+            {
+                for (curr = this->_start._node; curr < this->_finish._node;
+                     ++curr)
+                {
+                    _InputIter mid = first;
+                    _InputIter tmp = first;
+                    std::advance(mid, _max_nodes());
+
+                    for (size_type i = 0; tmp < mid; tmp++, i++)
+                    {
+                        _Tp_alloc_traits::construct(
+                            _alloc, std::addressof(*(*curr + i)), *tmp);
+                    }
+                    first = mid;
+                }
+
+                _InputIter tmp = first;
+                for (size_type i = 0; tmp < last; tmp++, i++)
+                {
+                    _Tp_alloc_traits::construct(
+                        _alloc, std::addressof(*(*curr + i)), *tmp);
+                }
+            }
+            catch (...)
+            {
+                for (map_pointer del_curr = this->_start._node; del_curr < curr;
+                     del_curr++)
+                {
+                    for (node_pointer node_curr = *del_curr;
+                         node_curr < *del_curr + _max_nodes(); node_curr++)
+                        _Tp_alloc_traits::destroy(_alloc,
+                                                  std::addressof(*node_curr));
+                }
+            }
+        }
+
+        /**
+         * Helper function to insert when _start._curr == _start._first happens
+         */
+        template <typename... Args>
+        void _push_front_aux(Args &&...args)
+        {
+            if (size() == max_size())
+                throw std::runtime_error("cannot create opendsa::deque larger "
+                                         "than max_size(), which is "
+                                         + this->max_size());
+
+            _reserve_map_at_front();
+            *(this->_start._node - 1)
+                = _Tp_alloc_traits::allocate(_alloc, _max_nodes());
+
+            try
+            {
+                this->_start.set_node(this->_start._node - 1);
+                this->_start._curr = this->_start._last - 1;
+                _Tp_alloc_traits::construct(_alloc, this->_start._curr,
+                                            std::forward<Args>(args)...);
+            }
+            catch (...)
+            {
+                ++this->_start;
+                _Tp_alloc_traits::deallocate(_alloc, *(this->_start._node - 1),
+                                             _max_nodes());
+                throw;
+            }
+        }
+
+        /**
+         * Helper function to insert when _finish._curr == _finish._last - 1
+         * happens
+         */
+        template <typename... Args>
+        void _push_back_aux(Args &&...args)
+        {
+            if (size() == max_size())
+                throw std::runtime_error("cannot create opendsa::deque larger "
+                                         "than max_size(), which is "
+                                         + this->max_size());
+
+            _reserve_map_at_back();
+            *(this->_finish._node + 1)
+                = _Tp_alloc_traits::allocate(_alloc, _max_nodes());
+
+            try
+            {
+                _Tp_alloc_traits::construct(_alloc, this->_finish._curr,
+                                            std::forward<Args>(args)...);
+                this->_finish.set_node(this->_finish._node + 1);
+                this->_finish._curr = this->_finish._first;
+            }
+            catch (...)
+            {
+                _Tp_alloc_traits::deallocate(_alloc, *(this->_finish._node + 1),
+                                             _max_nodes());
+                throw;
+            }
+        }
+
+        template <typename... Args>
+        iterator _insert_aux(iterator position, Args &&...args)
+        {
+            value_type copy(std::forward<Args>(args)...);
+
+            difference_type index = position - this->_start;
+            if (static_cast<size_type>(index) < size() / 2)
+            {
+                push_front(std::move(front()));
+                iterator front1 = iterator(this->_start + 1);
+                iterator front2 = iterator(front1 + 1);
+                position        = this->_start + index;
+                iterator pos1   = iterator(position + 1);
+
+                std::move(front2, pos1, front1);
+            }
+            else
+            {
+                push_back(std::move(back()));
+                iterator back1 = iterator(this->_finish - 1);
+                iterator back2 = iterator(back1 - 1);
+                position       = this->_start + index;
+                std::move_backward(position, back2, back1);
+            }
+
+            *position = std::move(copy);
+            return position;
+        }
     };
 } // namespace opendsa
 
