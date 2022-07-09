@@ -467,14 +467,38 @@ namespace opendsa
         }
 
         // Element access methods
+
+        /**
+         * @brief Returns a reference to the first element in the container.
+         *
+         * This function will return a reference to the first element in the
+         * container, similar to `*c.begin()` where c is a deque object. Calling
+         * `front()` on an empty deque object is undefined behavior.
+         */
         reference front() noexcept
         {
             _NON_EMPTY_DEQUE("Can't use front() on an empty deque");
             return *begin();
         }
 
+        /**
+         * @brief Returns a const reference to the first element in the
+         * container.
+         *
+         * This function will return a reference to the first element in the
+         * container, similar to `*c.cbegin()` where c is a deque object.
+         * Calling `front()` on an empty deque object is undefined behavior.
+         */
         const_reference front() const noexcept { return *cbegin(); }
 
+        /**
+         * @brief Returns a reference to the last element in the container.
+         *
+         * This function will return a reference to the last element in
+         * the container, similar to `*(c.end() - 1)` where is c is a deque
+         * object. Calling `back()` on an empty deque object is undefined
+         * behavior.
+         */
         reference back() noexcept
         {
             iterator tmp = end();
@@ -482,6 +506,15 @@ namespace opendsa
             return *tmp;
         }
 
+        /**
+         * @brief Returns a const reference to the last element in the
+         * container.
+         *
+         * This function will return a const reference to the last element in
+         * the container, similar to `*(c.end() - 1)` where is c is a deque
+         * object. Calling `back()` on an empty deque object is undefined
+         * behavior.
+         */
         const_reference back() const noexcept
         {
             const_iterator tmp = cend();
@@ -489,43 +522,147 @@ namespace opendsa
             return *tmp;
         }
 
+        /**
+         * @brief Returns a read/write iterator pointing to the first element in
+         * the %deque.
+         *
+         * Iterator in %deque is tagged as `std::random_access_iterator_tag`. If
+         * %deque is empty, `begin()` is same as `end()`.
+         */
         iterator begin() noexcept { return this->_start; }
 
+        /**
+         * @brief Returns a read-only iterator pointing to the first element in
+         * the %deque.
+         *
+         * Iterator in %deque is tagged as `std::random_access_iterator_tag`. If
+         * %deque is empty, `begin()` is same as `end()`.
+         */
         const_iterator cbegin() const noexcept { return this->_start; }
 
+        /**
+         * @brief Returns a read/write iterator pointing to the element after
+         * the last element in the %deque.
+         *
+         * Iterator in %deque is tagged as `std::random_access_iterator_tag`. If
+         * %deque is empty, `begin()` is same as `end()`.
+         *
+         * `end()` and `cend()` are considered as placeholders to support other
+         * operations such as comparison, traversal and modification. Attempts
+         * to access results in undefined behavior.
+         */
         iterator end() noexcept { return this->_finish; }
 
+        /**
+         * @brief Returns a read-only iterator pointing to the element after
+         * the last element in the %deque.
+         *
+         * Iterator in %deque is tagged as `std::random_access_iterator_tag`. If
+         * %deque is empty, `cbegin()` is same as `cend()`.
+         *
+         * `end()` and `cend()` are considered as placeholders to support other
+         * operations such as comparison, traversal and modification. Attempts
+         * to access results in undefined behavior.
+         */
         const_iterator cend() const noexcept { return this->_finish; }
 
+        /**
+         * @brief Returns a read/write iterator pointing the first element in
+         * the reversed %deque.
+         *
+         * Iterator in %deque is tagged as `std::random_access_iterator_tag`. If
+         * %deque is empty, `rbegin()` is same as `rend()`.
+         *
+         * It corresponds to the last element of the non-reversed %deque.
+         */
         reverse_iterator rbegin() noexcept
         {
             return reverse_iterator(this->_finish);
         }
 
+        /**
+         * @brief Returns a read-only iterator pointing the first element in
+         * the reversed %deque.
+         *
+         * Iterator in %deque is tagged as `std::random_access_iterator_tag`. If
+         * %deque is empty, `crbegin()` is same as `crend()`.
+         *
+         * It corresponds to the last element of the non-reversed %deque.
+         */
         const_reverse_iterator crbegin() const noexcept
         {
             return const_reverse_iterator(this->_finish);
         }
 
+        /**
+         * @brief Returns a read/write iterator pointing the element after the
+         * last element in the reversed %deque.
+         *
+         * Iterator in %deque is tagged as `std::random_access_iterator_tag`. If
+         * %deque is empty, `cbegin()` is same as `cend()`.
+         *
+         * `rend()` and `crend()` are considered as placeholders to support
+         * other operations such as comparison, traversal and modification.
+         * Attempts to access results in undefined behavior.
+         *
+         * It corresponds to the element before the first element of the
+         * non-reversed %deque.
+         */
         reverse_iterator rend() noexcept
         {
             return reverse_iterator(this->_start);
         }
 
+        /**
+         * @brief Returns a read-only iterator pointing the element after the
+         * last element in the reversed %deque.
+         *
+         * Iterator in %deque is tagged as `std::random_access_iterator_tag`. If
+         * %deque is empty, `crbegin()` is same as `crend()`.
+         *
+         * `rend()` and `crend()` are considered as placeholders to support
+         * other operations such as comparison, traversal and modification.
+         * Attempts to access results in undefined behavior.
+
+         * It corresponds to the element before the first element of the
+         * non-reversed %deque.
+         */
         const_reverse_iterator crend() const noexcept
         {
             return const_reverse_iterator(this->_start);
         }
 
         // Capacities
+
+        /**
+         * @brief Returns the number of elements in the %deque
+         */
         size_type size() const noexcept { return this->_finish - this->_start; }
 
+        /**
+         * @brief Returns whether or not the %deque is empt, i.e begin() ==
+         * end()
+         */
         bool empty() const noexcept { return this->_finish == this->_start; }
 
+        /**
+         * @brief Returns the maximum number of elements that the %deque could
+         * hold
+         */
         size_type max_size() const noexcept
         {
             return _Tp_alloc_traits::max_size(_alloc);
         }
+
+        /**
+         * @brief Inserts a new element into the container directly before the
+         * first element.
+         *
+         * @param args Argument list to construct in-place a new element.
+         *
+         * `emplace` functions will construct the element in-place based on the
+         * list of arguments ...args.
+         */
 
         template <typename... Args>
         reference emplace_front(Args &&...args)
@@ -542,6 +679,14 @@ namespace opendsa
             return front();
         }
 
+        /**
+         * @brief Inserts a new element into the container direcly at end().
+         *
+         * @param args Argument list to construct in-place a new element.
+         *
+         * `emplace` functions will construct the element in-place based on the
+         * list of arguments ...args.
+         */
         template <typename... Args>
         reference emplace_back(Args &&...args)
         {
@@ -557,6 +702,16 @@ namespace opendsa
             return back();
         }
 
+        /**
+         * @brief Inserts a new element into the container directly before
+         position.
+         *
+         * @param position Position to insert a new element before.
+         * @param args Argument list to construct in-place a new element.
+         *
+         * `emplace` functions will construct the element in-place based on the
+         * list of arguments ...args.
+         */
         template <typename... Args>
         iterator emplace(const_iterator position, Args &&...args)
         {
@@ -575,6 +730,11 @@ namespace opendsa
                                std::forward<Args>(args)...);
         }
 
+        /**
+         * @brief Adds an element into the first of the %deque.
+         *
+         * @param x Element to be added.
+         */
         void push_front(const value_type &x)
         {
             if (this->_start._curr != this->_start._first)
@@ -583,11 +743,21 @@ namespace opendsa
                 --this->_start._curr;
             }
             else
-                push_front(x);
+                _push_front_aux(x);
         }
 
+        /**
+         * @brief Adds an rvalue element into the first of the %deque.
+         *
+         * @param x Rvalue element to be added.
+         */
         void push_front(value_type &&x) { emplace_front(std::move(x)); }
 
+        /**
+         * @brief Adds an element into the back of the %deque.
+         *
+         * @param x Element to be added.
+         */
         void push_back(const value_type &x)
         {
             if (this->_finish._curr != this->_finish._last - 1)
@@ -596,12 +766,50 @@ namespace opendsa
                 ++this->_finish._curr;
             }
             else
-            {
                 _push_back_aux(x);
-            }
         }
 
+        /**
+         * @brief Adds an rvalue element into the back of the %deque.
+         *
+         * @param x Rvalue element to be added.
+         */
         void push_back(value_type &&x) { emplace_back(std::move(x)); }
+
+        iterator insert(const_iterator position, const value_type &x)
+        {
+            if (position._curr == this->_start._curr)
+            {
+                push_front(x);
+                return this->_start;
+            }
+
+            if (position._curr == this->_finish._curr)
+            {
+                push_back(x);
+                iterator tmp = this->_start._finish;
+                --tmp;
+                return tmp;
+            }
+
+            return _insert_aux(begin() + (position - cbegin()), x);
+        }
+
+        /**
+         * @brief Inserts given value into %deque directly before specified
+         * iterator.
+         *
+         * @param position  Iterator to insert the value before.
+         * @param x The value to be inserted.
+         *
+         * This function uses deep copy technique to insert a copy of the given
+         * value before the specified position. Thus, if type _Tp is a
+         * user-defined class, a copy constructor must be provided.
+         */
+        iterator insert(const_iterator position, value_type &&x)
+        {
+            return emplace(position, std::move(x));
+        }
 
     private:
         constexpr static size_type INITIAL_MAP_SIZE = 8;
