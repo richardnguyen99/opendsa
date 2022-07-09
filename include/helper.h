@@ -1,3 +1,7 @@
+#ifndef __OPENDSA_HELPER_H
+#define __OPENDSA_HELPER_H 1
+
+#include <algorithm>
 #include <iostream>
 
 #ifndef NDEBUG
@@ -18,8 +22,8 @@ void __M_Assert(const char *expr_str, bool expr, const char *file, int line,
     }
 }
 
-// For deque
-
 #ifndef NDEBUG
+// For deque
 #define _NON_EMPTY_DEQUE(Msg) M_Assert(!this->empty(), Msg)
 #endif
+#endif // __OPENDSA__HELPER_H
