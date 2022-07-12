@@ -796,11 +796,11 @@ namespace opendsa
         }
 
         /**
-         * @brief Inserts given value into %deque directly before specified
+         * @brief Inserts given rvalue into %deque directly before specified
          * iterator.
          *
          * @param position  Iterator to insert the value before.
-         * @param x The value to be inserted.
+         * @param x The rvalue to be inserted.
          *
          * This function uses deep copy technique to insert a copy of the given
          * value before the specified position. Thus, if type _Tp is a
@@ -809,6 +809,17 @@ namespace opendsa
         iterator insert(const_iterator position, value_type &&x)
         {
             return emplace(position, std::move(x));
+        }
+
+        iterator insert(const_iterator                    position,
+                        std::initializer_list<value_type> l)
+        {
+            difference_type offset = position - cbegin();
+
+            _range_insert_aux(begin() + offset, l.begin(), l.end(),
+                              std::random_access_iterator_tag());
+
+            return begin() + offset;
         }
 
     private:
@@ -978,6 +989,82 @@ namespace opendsa
                 _reallocate_map(nodes_to_add, false);
         }
 
+        void _new_elements_at_front(size_type new_elms)
+        {
+            if (this->max_size() - this->size() < new_elms)
+                throw std::runtime_error("cannot create opendsa::deque larger "
+                                         "than max_size(), which is "
+                                         + this->max_size());
+
+            const size_type new_nodes
+                = ((new_elms + _max_nodes() - 1) / _max_nodes());
+            _reserve_map_at_front(new_nodes);
+            size_type i;
+
+            try
+            {
+                for (i = 1; i <= new_nodes; ++i)
+                    *(this->_start._node - i)
+                        = _Tp_alloc_traits::allocate(_alloc, _max_nodes());
+            }
+            catch (...)
+            {
+                for (size_type j = 1; j < i; j++)
+                    _Tp_alloc_traits::deallocate(
+                        _alloc, *(this->_finish._node - j), _max_nodes());
+                throw;
+            }
+        }
+
+        void _new_elements_at_back(size_type new_elms)
+        {
+            if (this->max_size() - this->size() < new_elms)
+                throw std::runtime_error("cannot create opendsa::deque larger "
+                                         "than max_size(), which is "
+                                         + this->max_size());
+
+            const size_type new_nodes
+                = ((new_elms + _max_nodes() - 1) / _max_nodes());
+            _reserve_map_at_back(new_nodes);
+            size_type i;
+
+            try
+            {
+                for (i = 1; i <= new_nodes; i++)
+                    *(this->_finish._node + i)
+                        = _Tp_alloc_traits::allocate(_alloc, _max_nodes());
+            }
+            catch (...)
+            {
+                for (size_type j = 1; j < i; j++)
+                    _Tp_alloc_traits::deallocate(
+                        _alloc, *(this->_finish._node - j), _max_nodes());
+                throw;
+            }
+        }
+
+        iterator _reserve_elements_at_front(size_type n)
+        {
+            const size_type move_nodes
+                = this->_start._curr - this->_start._first;
+
+            if (n > move_nodes)
+                _new_elements_at_front(n - move_nodes);
+
+            return this->_start - difference_type(n);
+        }
+
+        iterator _reserve_elements_at_back(size_type n)
+        {
+            const size_type move_nodes
+                = this->_finish._last - this->_finish._curr - 1;
+
+            if (n > move_nodes)
+                _new_elements_at_back(n - move_nodes);
+
+            return this->_finish + difference_type(n);
+        }
+
         void _fill_construct(const value_type &value)
         {
             map_pointer curr;
@@ -1145,6 +1232,139 @@ namespace opendsa
 
             *position = std::move(copy);
             return position;
+        }
+
+        template <typename _ForwardIter>
+        void _insert_aux(iterator pos, _ForwardIter first, _ForwardIter last,
+                         size_type n)
+        {
+            const difference_type elms_before = pos - this->_start;
+            const size_type       length      = size();
+
+            if (static_cast<size_type>(elms_before) < length / 2)
+            {
+                iterator new_start = _reserve_elements_at_front(n);
+                iterator old_start = this->_start;
+                pos                = this->_start + elms_before;
+
+                try
+                {
+                    if (elms_before >= difference_type(n))
+                    {
+                        iterator nstart = (this->_start + difference_type(n));
+                        __uninit_move_with_allocator(this->_start, nstart,
+                                                     new_start, _alloc);
+                        this->_start = new_start;
+                        std::move(nstart, pos, old_start);
+                        std::copy(first, last, pos - difference_type(n));
+                    }
+                    else
+                    {
+                        _ForwardIter mid = first;
+                        std::advance(mid, difference_type(n) - elms_before);
+                        const difference_type start_to_pos
+                            = (pos - this->_start);
+                        __uninit_move_with_allocator(this->_start, pos,
+                                                     new_start, _alloc);
+                        __uninit_copy_with_allocator(
+                            first, mid, new_start + start_to_pos, _alloc);
+                        this->_start = new_start;
+                        std::copy(mid, last, old_start);
+                    }
+                }
+                catch (...)
+                {
+                    for (map_pointer mcurr = new_start._node;
+                         mcurr < this->_start._node; mcurr++)
+                        _Tp_alloc_traits::deallocate(
+                            _alloc, std::addressof(**mcurr), _max_nodes());
+                    throw;
+                }
+            }
+            else
+            {
+                iterator              new_finish = _reserve_elements_at_back(n);
+                iterator              old_finish = this->_finish;
+                const difference_type elms_after
+                    = difference_type(length) - elms_before;
+                pos = this->_finish - elms_after;
+                try
+                {
+                    if (elms_after > difference_type(n))
+                    {
+                        iterator nfinish = (this->_finish - difference_type(n));
+                        __uninit_move_with_allocator(nfinish, this->_finish,
+                                                     this->_finish, _alloc);
+                        this->_finish = new_finish;
+                        std::move_backward(pos, nfinish, old_finish);
+                        std::move(first, last, pos);
+                    }
+                    else
+                    {
+                        _ForwardIter mid = first;
+                        std::advance(mid, elms_after);
+                        iterator npos = __uninit_copy_with_allocator(
+                            mid, last, this->_finish, _alloc);
+                        __uninit_move_with_allocator(pos, this->_finish, npos,
+                                                     _alloc);
+                        this->_finish = new_finish;
+                        std::copy(first, mid, pos);
+                    }
+                }
+                catch (...)
+                {
+                    for (map_pointer mcurr = this->_finish._node + 1;
+                         mcurr < this->_finish._node + 1; ++mcurr)
+                        _Tp_alloc_traits::deallocate(
+                            _alloc, std::addressof(**mcurr), _max_nodes());
+                }
+            }
+        }
+
+        template <typename _InputIter>
+        void _range_insert_aux(iterator pos, _InputIter first, _InputIter last,
+                               std::forward_iterator_tag)
+        {
+            const size_type nodes_to_add = std::distance(first, last);
+
+            if (pos._curr == this->_start._curr)
+            {
+                iterator new_start = _reserve_elements_at_front(nodes_to_add);
+                try
+                {
+                    __uninit_copy_with_allocator(first, last, new_start,
+                                                 _alloc);
+                    this->_start = new_start;
+                }
+                catch (...)
+                {
+                    for (map_pointer mcurr = new_start._node;
+                         mcurr < this->_start._node; mcurr++)
+                        _Tp_alloc_traits::deallocate(
+                            _alloc, std::addressof(**mcurr), _max_nodes());
+                    throw;
+                }
+            }
+            else if (pos._curr == this->_finish._curr)
+            {
+                iterator new_finish = _reserve_elements_at_back(nodes_to_add);
+                try
+                {
+                    __uninit_copy_with_allocator(first, last, this->_finish,
+                                                 _alloc);
+                    this->_finish = new_finish;
+                }
+                catch (...)
+                {
+                    for (map_pointer mcurr = this->_finish._node + 1;
+                         new_finish._node + 1; mcurr++)
+                        _Tp_alloc_traits::deallocate(
+                            _alloc, std::addressof(**mcurr), _max_nodes());
+                    throw;
+                }
+            }
+            else
+                _insert_aux(pos, first, last, nodes_to_add);
         }
     };
 } // namespace opendsa
