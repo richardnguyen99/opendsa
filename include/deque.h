@@ -45,6 +45,17 @@ namespace opendsa
                    : std::size_t(1);
     }
 
+    /**
+     * @brief Deque iterator to hold information for a deque object
+     *
+     * A deque allocates a list of pointers. Each of them points to a fixed-size
+     * array, which is determined by get_buffer_size_size(). For simplicity, a
+     * list of pointers is called a map and each pointer is called a node. A
+     * deque iterator will hold essential information about a particular node.
+     * Each deque object will hold two of these to mark the entire map and its
+     * associative nodes such as the range of the map, how many elements the
+     * deque object is holding and how those elements are distributed.
+     */
     template <typename _Tp, typename _Ref, typename _Ptr>
     struct deque_iterator
     {
@@ -68,24 +79,49 @@ namespace opendsa
         using size_type         = std::size_t;
         using difference_type   = std::ptrdiff_t;
 
+        // _curr behaves like the range of elements stored in the array in those
+        // two essential iterators in a deque object. Additionally, it also
+        // marks the current pointer to a particular element to support
+        // traversal and other pointer-like computations such dereferencing.
+        // This data member helps marking the range of elements in a deque
+        // object.
         node_pointer _curr;
-        node_pointer _first;
-        node_pointer _last;
-        map_pointer  _node;
+        node_pointer _first; // Mark the lower bound
+        node_pointer _last;  // Mark the upper bound
+        map_pointer  _node;  // Mark the pointer in the map
 
+        /**
+         * @brief Returns the maximum number of objects of type _Tp this deque
+         * iterator can hold.
+         */
         static size_type get_nnodes() noexcept
         {
             return get_deque_buffer_size(sizeof(value_type));
         }
 
+        /**
+         * @brief Constructs an empty deque iterator.
+         *
+         */
         deque_iterator() noexcept : _curr(), _first(), _last(), _node() {}
 
+        /**
+         * @brief Constructs a new deque iterator object with existing data.
+         *
+         * @param nptr Node pointer to mark how many elements to store.
+         * @param mptr Map pointer associating with the map.
+         */
         deque_iterator(node_pointer nptr, map_pointer mptr) noexcept
             : _curr(nptr), _first(*mptr), _last(*mptr + get_nnodes()),
               _node(mptr)
         {
         }
 
+        /**
+         * @brief Converts normal iterator to const iterator.
+         *
+         * @param __x Normal deque iterator.
+         */
         template <typename _Iter,
                   typename = typename std::enable_if<std::conjunction<
                       std::is_same<deque_iterator, const_iterator>,
@@ -96,6 +132,11 @@ namespace opendsa
         {
         }
 
+        /**
+         * @brief Copies an existing deque iterator.
+         *
+         * @param other Other deque iterator of the same.
+         */
         deque_iterator(const deque_iterator &other) noexcept
             : _curr(other._curr), _first(other._first), _last(other._last),
               _node(other._node)
@@ -104,10 +145,19 @@ namespace opendsa
 
         deque_iterator &operator=(const deque_iterator &) = default;
 
+        /**
+         * @brief Dereferences the currently held data.
+         */
         reference operator*() const noexcept { return *_curr; }
 
+        /**
+         * @brief Accesses data members and methods supported by type _Tp
+         */
         pointer operator->() const noexcept { return _curr; }
 
+        /**
+         * @brief Prefix increments (increments then returns)
+         */
         deque_iterator &operator++() noexcept
         {
             ++_curr;
@@ -120,6 +170,11 @@ namespace opendsa
             return *this;
         }
 
+        /**
+         * @brief
+         *
+         * @return deque_iterator
+         */
         deque_iterator operator++(int) noexcept
         {
             deque_iterator temp = *this;
