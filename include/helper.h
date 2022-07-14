@@ -37,6 +37,25 @@ namespace opendsa
             traits_t::destroy(__alloc, std::addressof(*__first));
     }
 
+    template <typename _ForwardIter, typename _Tp, typename _Allocator>
+    void __uninit_fill_with_allocator(_ForwardIter __first, _ForwardIter __last,
+                                      const _Tp &__x, _Allocator &__alloc)
+    {
+        _ForwardIter __curr = __first;
+
+        try
+        {
+            using traits_t = std::allocator_traits<_Allocator>;
+            for (; __curr != __last; ++__curr)
+                traits_t::construct(__alloc, std::addressof(*__curr), __x);
+        }
+        catch (...)
+        {
+            __destroy_range(__first, __curr, __alloc);
+            throw;
+        }
+    }
+
     /**
      * @brief Initializes [first, last) to starting pointer __start_result.
      */

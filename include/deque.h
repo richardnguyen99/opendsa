@@ -156,7 +156,7 @@ namespace opendsa
         pointer operator->() const noexcept { return _curr; }
 
         /**
-         * @brief Prefix increments (increments then returns)
+         * @brief Prefix increments (increments then assigns)
          */
         deque_iterator &operator++() noexcept
         {
@@ -171,9 +171,7 @@ namespace opendsa
         }
 
         /**
-         * @brief
-         *
-         * @return deque_iterator
+         * @brief Postfix increments (assigns then increments)
          */
         deque_iterator operator++(int) noexcept
         {
@@ -182,6 +180,9 @@ namespace opendsa
             return temp;
         }
 
+        /**
+         * @brief Prefix decrements (decrements then assigns)
+         */
         deque_iterator &operator--() noexcept
         {
             if (_curr == _first)
@@ -193,6 +194,9 @@ namespace opendsa
             return *this;
         }
 
+        /**
+         * @brief Postfix decrements (assigns then decrements)
+         */
         deque_iterator operator--(int) const noexcept
         {
             deque_iterator temp = *this;
@@ -207,17 +211,21 @@ namespace opendsa
             // check should include both signs.
             const difference_type elm_offset = n + (_curr - _first);
 
+            // If moving _curr does not exceed the current node
             if (elm_offset >= 0 && elm_offset < difference_type(get_nnodes()))
                 _curr += n;
             else
             {
+                // Compute node_offset based on the sign so that set_node() is
+                // more capable of moving to the new node.
                 const difference_type node_offset
                     = elm_offset > 0
                           ? elm_offset / difference_type(get_nnodes())
                           : -difference_type((-elm_offset - 1) / get_nnodes())
-                                - 1;
+                                - 1; // Rare case: _curr == _first
+
                 set_node(_node + node_offset);
-                _curr = _first
+                _curr = _first // _first now is changed due to set_node
                         + (elm_offset
                            - node_offset * difference_type(get_nnodes()));
             }
@@ -251,6 +259,11 @@ namespace opendsa
             _first = *node;
             _last  = _first + get_nnodes();
         }
+
+        // Comparisons between deques of two different template arguments are
+        // for normal deques and const deques. If those operand deques have the
+        // same template arguments, they're the same, either normal or const
+        // deques.
 
         friend bool operator==(const deque_iterator &lhs,
                                const deque_iterator &rhs) noexcept
@@ -338,6 +351,10 @@ namespace opendsa
             return !(lhs > rhs);
         }
 
+        // operator-() between two deque iterators is to count how many elements
+        // are stored in the two given deque iterators. Useful for some
+        // functions such as std::distance().
+
         friend difference_type operator-(const deque_iterator &lhs,
                                          const deque_iterator &rhs) noexcept
         {
@@ -385,21 +402,40 @@ namespace opendsa
         }
     };
 
+    /**
+     * @brief A doubly-ended queue
+     *
+     * @tparam _Tp Type of elements
+     * @tparam _Alloc User-defined allocator
+     *
+     * A deque (deck) is a data structure that helps pushing elements at both
+     * ends efficiently. A deque holds a list of pointers, called a map. Each
+     * pointer holds the address of, or points to, a fixed-size array that
+     * stores actual data. The size of the array is determined depending on the
+     * size of the type of its elements.
+     */
     template <typename _Tp, typename _Alloc = std::allocator<_Tp>>
     class deque
     {
     private:
+        // Mainly in charge of allocating individual elements in the deque.
+
         using _Tp_alloc_type =
             typename std::allocator_traits<_Alloc>::rebind_alloc<_Tp>;
         using _Tp_alloc_traits = std::allocator_traits<_Tp_alloc_type>;
         using _Tp_ptr          = typename _Tp_alloc_traits::pointer;
         using _Tp_ptr_const    = typename _Tp_alloc_traits::const_pointer;
 
+        // If users have specified their own allocator, reuse for allocating
+        // pointers in the map.
+
         using _Map_alloc_type =
             typename std::allocator_traits<_Alloc>::rebind_alloc<_Tp_ptr>;
         using _Map_alloc_traits = std::allocator_traits<_Map_alloc_type>;
 
     public:
+        // Type aliases
+
         using value_type      = _Tp;
         using reference       = _Tp &;
         using const_reference = const _Tp &;
@@ -866,6 +902,37 @@ namespace opendsa
             return emplace(position, std::move(x));
         }
 
+        /**
+         * @brief Inserts @a count numbers of a specified value of type @a _Tp
+         * into %deque directly before specified iterator.
+         *
+         * @param position Iterator to insert new elements.
+         * @param count Number of elements.
+         * @param x The element to create copies.
+         *
+         * This function uses deep copy technique to insert @a count copies of
+         * the given value before the specified position. Thus, if type @a _Tp
+         * is a user-defined class, a copy constructor must be provided.
+         */
+        iterator insert(const_iterator position, size_type count,
+                        const value_type &x)
+        {
+            difference_type offset = position - cbegin();
+            _fill_insert_aux(begin() + offset, count, x);
+            return begin() + offset;
+        }
+
+        /**
+         * @brief Inserts a list of elements of same type into %deque directly
+         * before specified iterator.
+         *
+         * @param position Iterator to insert the list before.
+         * @param l Initializer list of elements
+         *
+         * This function copies elements from @a l to the location before the
+         * specified iterator. Thus, if type @a _Tp is a user-defined lcase, a
+         * copy constructor must be provided.
+         */
         iterator insert(const_iterator                    position,
                         std::initializer_list<value_type> l)
         {
@@ -1374,6 +1441,151 @@ namespace opendsa
                             _alloc, std::addressof(**mcurr), _max_nodes());
                 }
             }
+        }
+
+        void _insert_aux(iterator pos, size_type n, const value_type &x)
+        {
+            const difference_type elms_before = pos - this->_start;
+            const size_type       length      = this->size();
+
+            if (elms_before < difference_type(length / 2))
+            {
+                iterator new_start = _reserve_elements_at_front(n);
+                iterator old_start = this->_start;
+                pos                = this->_start + elms_before;
+
+                try
+                {
+                    if (elms_before >= difference_type(n))
+                    {
+                        iterator nstart = this->_start + difference_type(n);
+                        __uninit_move_with_allocator(this->_start, nstart,
+                                                     new_start, _alloc);
+                        this->_start = new_start;
+                        std::move(nstart, pos, old_start);
+                        std::fill(pos - difference_type(n), pos, x);
+                    }
+                    else
+                    {
+                        iterator mid = __uninit_move_with_allocator(
+                            this->_start, pos, new_start, _alloc);
+
+                        try
+                        {
+                            __uninit_fill_with_allocator(mid, this->_start, x,
+                                                         _alloc);
+                        }
+                        catch (...)
+                        {
+                            __destroy_range(new_start, mid, _alloc);
+                            throw;
+                        }
+
+                        this->_start = new_start;
+                        std::fill(old_start, pos, x);
+                    }
+                }
+                catch (...)
+                {
+                    for (map_pointer mcurr = new_start._node;
+                         mcurr < this->_start._node; ++mcurr)
+                        _Tp_alloc_traits::deallocate(
+                            _alloc, std::addressof(**mcurr), _max_nodes());
+                    throw;
+                }
+            }
+            else
+            {
+                iterator              new_finish = _reserve_elements_at_back(n);
+                iterator              old_finish = this->_finish;
+                const difference_type elms_after
+                    = difference_type(length) - elms_before;
+                pos = this->_finish - elms_after;
+
+                try
+                {
+                    if (elms_after > difference_type(n))
+                    {
+                        iterator nfinish = (this->_finish - difference_type(n));
+                        __uninit_move_with_allocator(nfinish, this->_finish,
+                                                     this->_finish, _alloc);
+                        this->_finish = new_finish;
+                        std::move(pos, nfinish, old_finish);
+                        std::fill(pos, pos + difference_type(n), x);
+                    }
+                    else
+                    {
+                        __uninit_fill_with_allocator(
+                            this->_finish, pos + difference_type(n), x, _alloc);
+
+                        try
+                        {
+                            __uninit_move_with_allocator(
+                                pos, this->_finish, pos + difference_type(n),
+                                _alloc);
+                        }
+                        catch (...)
+                        {
+                            __destroy_range(this->_finish,
+                                            pos + difference_type(n), _alloc);
+                            throw;
+                        }
+
+                        this->_finish = new_finish;
+                        std::fill(pos, old_finish, x);
+                    }
+                }
+                catch (...)
+                {
+                    for (map_pointer mcurr = this->_finish._node + 1;
+                         mcurr < new_finish._node + 1; ++mcurr)
+                        _Tp_alloc_traits::deallocate(
+                            _alloc, std::addressof(**mcurr), _max_nodes());
+                    throw;
+                }
+            }
+        }
+
+        void _fill_insert_aux(iterator pos, size_type n, const value_type &x)
+        {
+            if (pos._curr == this->_start._curr)
+            {
+                iterator new_start = _reserve_elements_at_front(n);
+                try
+                {
+                    __uninit_fill_with_allocator(new_start, this->_start, x,
+                                                 _alloc);
+                    this->_start = new_start;
+                }
+                catch (...)
+                {
+                    for (map_pointer mcurr = new_start._node;
+                         mcurr < this->_start._node; mcurr++)
+                        _Tp_alloc_traits::deallocate(
+                            _alloc, std::addressof(**mcurr), _max_nodes());
+                    throw;
+                }
+            }
+            else if (pos._curr == this->_start._curr)
+            {
+                iterator new_finish = _reserve_elements_at_back(n);
+                try
+                {
+                    __uninit_fill_with_allocator(this->_finish, new_finish, n,
+                                                 _alloc);
+                    this->_finish = new_finish;
+                }
+                catch (...)
+                {
+                    for (map_pointer mcurr = new_finish._node;
+                         mcurr < this->_finish._node; ++mcurr)
+                        _Tp_alloc_traits::deallocate(
+                            _alloc, std::addressof(**mcurr), _max_nodes());
+                    throw;
+                }
+            }
+            else
+                _insert_aux(pos, n, x);
         }
 
         template <typename _InputIter>
