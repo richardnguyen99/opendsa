@@ -148,12 +148,18 @@ namespace opendsa
         /**
          * @brief Dereferences the currently held data.
          */
-        reference operator*() const noexcept { return *_curr; }
+        reference operator*() const noexcept
+        {
+            return *_curr;
+        }
 
         /**
          * @brief Accesses data members and methods supported by type _Tp
          */
-        pointer operator->() const noexcept { return _curr; }
+        pointer operator->() const noexcept
+        {
+            return _curr;
+        }
 
         /**
          * @brief Prefix increments (increments then assigns)
@@ -583,7 +589,10 @@ namespace opendsa
          * container, similar to `*c.cbegin()` where c is a deque object.
          * Calling `front()` on an empty deque object is undefined behavior.
          */
-        const_reference front() const noexcept { return *cbegin(); }
+        const_reference front() const noexcept
+        {
+            return *cbegin();
+        }
 
         /**
          * @brief Returns a reference to the last element in the container.
@@ -623,7 +632,10 @@ namespace opendsa
          * Iterator in %deque is tagged as `std::random_access_iterator_tag`. If
          * %deque is empty, `begin()` is same as `end()`.
          */
-        iterator begin() noexcept { return this->_start; }
+        iterator begin() noexcept
+        {
+            return this->_start;
+        }
 
         /**
          * @brief Returns a read-only iterator pointing to the first element in
@@ -632,7 +644,10 @@ namespace opendsa
          * Iterator in %deque is tagged as `std::random_access_iterator_tag`. If
          * %deque is empty, `begin()` is same as `end()`.
          */
-        const_iterator cbegin() const noexcept { return this->_start; }
+        const_iterator cbegin() const noexcept
+        {
+            return this->_start;
+        }
 
         /**
          * @brief Returns a read/write iterator pointing to the element after
@@ -645,7 +660,10 @@ namespace opendsa
          * operations such as comparison, traversal and modification. Attempts
          * to access results in undefined behavior.
          */
-        iterator end() noexcept { return this->_finish; }
+        iterator end() noexcept
+        {
+            return this->_finish;
+        }
 
         /**
          * @brief Returns a read-only iterator pointing to the element after
@@ -658,7 +676,10 @@ namespace opendsa
          * operations such as comparison, traversal and modification. Attempts
          * to access results in undefined behavior.
          */
-        const_iterator cend() const noexcept { return this->_finish; }
+        const_iterator cend() const noexcept
+        {
+            return this->_finish;
+        }
 
         /**
          * @brief Returns a read/write iterator pointing the first element in
@@ -731,13 +752,19 @@ namespace opendsa
         /**
          * @brief Returns the number of elements in the %deque
          */
-        size_type size() const noexcept { return this->_finish - this->_start; }
+        size_type size() const noexcept
+        {
+            return this->_finish - this->_start;
+        }
 
         /**
          * @brief Returns whether or not the %deque is empt, i.e begin() ==
          * end()
          */
-        bool empty() const noexcept { return this->_finish == this->_start; }
+        bool empty() const noexcept
+        {
+            return this->_finish == this->_start;
+        }
 
         /**
          * @brief Returns the maximum number of elements that the %deque could
@@ -845,7 +872,10 @@ namespace opendsa
          *
          * @param x Rvalue element to be added.
          */
-        void push_front(value_type &&x) { emplace_front(std::move(x)); }
+        void push_front(value_type &&x)
+        {
+            emplace_front(std::move(x));
+        }
 
         /**
          * @brief Adds an element into the back of the %deque.
@@ -868,7 +898,10 @@ namespace opendsa
          *
          * @param x Rvalue element to be added.
          */
-        void push_back(value_type &&x) { emplace_back(std::move(x)); }
+        void push_back(value_type &&x)
+        {
+            emplace_back(std::move(x));
+        }
 
         iterator insert(const_iterator position, const value_type &x)
         {
@@ -982,7 +1015,24 @@ namespace opendsa
                                 begin() + (last - cbegin()));
         }
 
-        void clear() { _erase_to_end(begin()); }
+        void resize(size_type count)
+        {
+            resize(count, value_type());
+        }
+
+        void resize(size_type count, const value_type &value)
+        {
+            const size_type len = size();
+            if (count > len)
+                _insert_aux(end(), count - len, value);
+            else if (count < len)
+                _erase_to_end(this->_start + difference_type(count));
+        }
+
+        void clear()
+        {
+            _erase_to_end(begin());
+        }
 
     private:
         constexpr static size_type INITIAL_MAP_SIZE = 8;
