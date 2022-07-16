@@ -11,7 +11,7 @@
 #include <iostream>
 #include <vector>
 
-#include "include/vector.h"
+#include "vector.h"
 
 int main(int argc, const char **argv)
 {

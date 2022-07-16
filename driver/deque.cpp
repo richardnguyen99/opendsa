@@ -4,9 +4,9 @@
 #include <iterator>
 #include <vector>
 
-#include "../include/algorithm.h"
-#include "../include/deque.h"
-#include "../include/vector.h"
+#include "algorithm.h"
+#include "deque.h"
+#include "vector.h"
 
 void test_raw_allocation()
 {

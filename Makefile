@@ -1,12 +1,42 @@
+# Specify the g++ compiler
 CXX := g++
-CXXFLAGS := -Wall -Werror -std=c++2a
+# Specify the essential flags used in every build
+CXXFLAGS := -Wall -Werror -std=c++20
+
+# Header directory
+INCDIR := ./include
+# Driver directory
+SRCDIR := ./driver
+# Build directory
+BLDDIR := ./build
+
+# Creates a list of driver files using shell command 'find'
+SRC := $(shell find $(SRCDIR) -name '*.cpp')
+# Creates a list of object files substituted from $(SRC)
+OBJ := $(patsubst $(SRCDIR)/%.cpp, $(BLDDIR)/%.o, $(SRC))
+# Create a list of executables substituted from $(OBJ)
+EXC := $(patsubst $(BLDDIR)/%.o, $(BLDDIR)/%, $(OBJ))
 
 all: main
+
+.PHONY: clean
 
 check-leak: main
 	@echo "========= Memory leak check with Valgrind ========="
 	valgrind --track-origins=yes --leak-check=full  --error-exitcode=1 -q ./main
 	@echo "\nValgrind has returned a status code of $$?. No memory leak found"
+
+# Build driver programs
+build: $(EXC)
+
+$(BLDDIR)/%: $(BLDDIR)/%.o
+	$(CXX) -o $@ $<
+
+$(BLDDIR)/%.o: $(SRCDIR)/%.cpp
+	if [ ! -d "./build" ]; then \
+		mkdir -p build; \
+	fi
+	$(CXX) $(CXXFLAGS) -I$(INCDIR) -O0 -c -o $@ $<
 
 main: main.o
 	$(CXX)  -o main main.o
@@ -15,4 +45,4 @@ main.o: main.cpp
 	$(CXX) $(CXXFLAGS) -c -o main.o main.cpp
 
 clean:
-	rm -rf main *.o
+	rm -rf main *.o build/
