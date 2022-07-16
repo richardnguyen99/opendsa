@@ -4,9 +4,9 @@
 #include <iterator>
 #include <vector>
 
-#include "include/algorithm.h"
-#include "include/deque.h"
-#include "include/vector.h"
+#include "../include/algorithm.h"
+#include "../include/deque.h"
+#include "../include/vector.h"
 
 void test_raw_allocation()
 {
@@ -43,7 +43,7 @@ void test_raw_allocation()
 }
 
 template <typename T>
-void test_get_deque_info(const opendsa::deque<T> deque)
+void test_get_deque_info(const opendsa::deque<T> &deque)
 {
     std::cout << "============ DEQUE INFO: ============\n";
     std::cout << "Size: " << deque.size() << "\n";
@@ -105,6 +105,20 @@ int main(int argc, const char **argv)
     d4.insert(d4.cbegin() + 2, {-9, -8, -7, -6});
     d4.insert(d4.cend(), {23, 24});
     d4.insert(d4.cend() - 2, {17, 18, 19, 20, 21, 22});
+    d4.insert(d4.cend(), 5, 25);
+    d4.insert(d4.cend() - 5, 5, 24);
+    d4.insert(d4.cbegin(), 3, -12);
+    d4.insert(d4.cbegin() + 4, 3, -10);
+    d4.insert(d4.cbegin() + 4, 5, -11);
+    d4.pop_back();
+    d4.pop_front();
+    d4.erase(d4.cbegin() + 2);
+    d4.erase(d4.cend() - 3);
+    d3.erase(d3.cbegin(), d3.cend());
+    d4.erase(d4.cbegin() + 2, d4.cbegin() + 6);
+    d4.erase(d4.cend() - 3, d4.cend());
+    d4.resize(10);
+    d4.resize(20, -1);
 
     test_get_deque_info(d);
     test_get_deque_info(d3);

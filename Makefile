@@ -1,4 +1,4 @@
-CXX := c++
+CXX := g++
 CXXFLAGS := -Wall -Werror -std=c++2a
 
 all: main
