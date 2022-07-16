@@ -944,6 +944,35 @@ namespace opendsa
             return begin() + offset;
         }
 
+        void pop_front() noexcept
+        {
+            _NON_EMPTY_DEQUE("Cannot use pop_front() on an empty deque");
+            if (this->_start._curr != this->_start._last - 1)
+            {
+                _Tp_alloc_traits::destroy(_alloc, this->_start._curr);
+                ++this->_start._curr;
+            }
+            else
+                _pop_front_aux();
+        }
+
+        void pop_back() noexcept
+        {
+            _NON_EMPTY_DEQUE("Cannot use pop_back() on an empty deque");
+            if (this->_finish._curr != this->_finish._first)
+            {
+                --this->_finish._curr;
+                _Tp_alloc_traits::destroy(_alloc, this->_finish._curr);
+            }
+            else
+                _pop_back_aux();
+        }
+
+        iterator erase(const_iterator position)
+        {
+            return _erase(begin() + (position - cbegin()));
+        }
+
     private:
         constexpr static size_type INITIAL_MAP_SIZE = 8;
 
@@ -1632,6 +1661,46 @@ namespace opendsa
             }
             else
                 _insert_aux(pos, first, last, nodes_to_add);
+        }
+
+        void _pop_front_aux()
+        {
+            _Tp_alloc_traits::destroy(_alloc, this->_start._curr);
+            _Tp_alloc_traits::deallocate(_alloc, this->_start._first,
+                                         _max_nodes());
+            this->_start.set_node(this->_start._node + 1);
+            this->_start._curr = this->_start._first;
+        }
+
+        void _pop_back_aux()
+        {
+            _Tp_alloc_traits::deallocate(_alloc, this->_finish._first,
+                                         _max_nodes());
+            this->_finish.set_node(this->_finish._node - 1);
+            this->_finish._curr = this->_finish._last - 1;
+            _Tp_alloc_traits::destroy(_alloc, this->_finish._curr);
+        }
+
+        iterator _erase(iterator pos)
+        {
+            iterator next = pos;
+            ++next;
+            const difference_type index = pos - begin();
+
+            if (static_cast<size_type>(index) < (this->size() / 2))
+            {
+                if (pos != begin())
+                    std::move_backward(begin(), pos, next);
+                pop_front();
+            }
+            else
+            {
+                if (next != end())
+                    std::move(next, end(), pos);
+                pop_back();
+            }
+
+            return begin() + index;
         }
     };
 } // namespace opendsa
