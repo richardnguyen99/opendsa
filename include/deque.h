@@ -553,8 +553,11 @@ namespace opendsa
         ~deque()
         {
             _destroy_data(this->_start, this->_finish);
-            _deallocate_nodes(this->_start._node, this->_finish._node);
-            _deallocate_map(this->_map, this->_map_size);
+            if (this->_map)
+            {
+                _deallocate_nodes(this->_start._node, this->_finish._node + 1);
+                _deallocate_map(this->_map, this->_map_size);
+            }
         }
 
         // Element access methods
@@ -973,6 +976,14 @@ namespace opendsa
             return _erase(begin() + (position - cbegin()));
         }
 
+        iterator erase(const_iterator first, const_iterator last)
+        {
+            return _erase_range(begin() + (first - cbegin()),
+                                begin() + (last - cbegin()));
+        }
+
+        void clear() { _erase_to_end(begin()); }
+
     private:
         constexpr static size_type INITIAL_MAP_SIZE = 8;
 
@@ -1017,7 +1028,7 @@ namespace opendsa
 
         void _deallocate_nodes(map_pointer first, map_pointer last)
         {
-            for (map_pointer curr = first; curr != last + 1; curr++)
+            for (map_pointer curr = first; curr < last; curr++)
                 _Tp_alloc_traits::deallocate(_alloc, std::addressof(**curr),
                                              _max_nodes());
         }
@@ -1075,6 +1086,8 @@ namespace opendsa
             catch (...)
             {
                 _deallocate_map(this->_map, this->_map_size);
+                this->_map      = map_pointer();
+                this->_map_size = 0;
                 throw;
             }
 
@@ -1701,6 +1714,48 @@ namespace opendsa
             }
 
             return begin() + index;
+        }
+
+        void _erase_from_begin(iterator end)
+        {
+            _destroy_data(begin(), end);
+            _deallocate_nodes(this->_start._node, end._node);
+            this->_start = end;
+        }
+
+        void _erase_to_end(iterator start)
+        {
+            _destroy_data(start, end());
+            _deallocate_nodes(start._node + 1, this->_finish._node + 1);
+            this->_finish = start;
+        }
+
+        iterator _erase_range(iterator first, iterator last)
+        {
+            if (first == last)
+                return first;
+            else if (first == begin() && last == end())
+            {
+                clear();
+                return end();
+            }
+
+            const difference_type n           = last - first;
+            const difference_type elms_before = first - begin();
+            if (static_cast<size_type>(elms_before) <= (size() - n) / 2)
+            {
+                if (first != begin())
+                    std::move_backward(begin(), first, last);
+                _erase_from_begin(begin() + n);
+            }
+            else
+            {
+                if (last != end())
+                    std::move(last, end(), first);
+                _erase_to_end(end() - n);
+            }
+
+            return begin() + elms_before;
         }
     };
 } // namespace opendsa
