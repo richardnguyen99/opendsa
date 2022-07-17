@@ -1034,6 +1034,24 @@ namespace opendsa
             _erase_to_end(begin());
         }
 
+        void swap(deque &other) noexcept
+        {
+            map_pointer tmp_map    = other._map;
+            size_type   tmp_size   = other._map_size;
+            iterator    tmp_start  = other._start;
+            iterator    tmp_finish = other._finish;
+
+            other._map      = this->_map;
+            other._map_size = this->_map_size;
+            other._start    = this->_start;
+            other._finish   = this->_finish;
+
+            this->_map      = tmp_map;
+            this->_map_size = tmp_size;
+            this->_start    = tmp_start;
+            this->_finish   = tmp_finish;
+        }
+
     private:
         constexpr static size_type INITIAL_MAP_SIZE = 8;
 
