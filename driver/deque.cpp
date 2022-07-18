@@ -4,9 +4,11 @@
 #include <iterator>
 #include <vector>
 
-#include "algorithm.h"
+//#include "algorithm.h"
 #include "deque.h"
-#include "vector.h"
+//#include "vector.h"
+
+// #include <opendsa/deque>
 
 void test_raw_allocation()
 {
@@ -74,6 +76,13 @@ void test_get_deque_info(const opendsa::deque<T> &deque)
                       std::cout << e << ((i < deque.size() - 1) ? ", " : " ");
                       i++;
                   });
+    std::cout << "}\n";
+
+    std::cout << "Elements (subscript): { ";
+    for (i = 0; i < deque.size(); ++i)
+    {
+        std::cout << deque[i] << ((i < deque.size() - 1) ? ", " : " ");
+    }
     std::cout << "}\n\n";
 }
 
@@ -120,9 +129,14 @@ int main(int argc, const char **argv)
     d4.resize(10);
     d4.resize(20, -1);
 
+    d4.swap(d3);
+    d4.insert(d4.cbegin(), {1, 2, 3, 4, 5, 6, 7, 8});
+
     test_get_deque_info(d);
     test_get_deque_info(d3);
     test_get_deque_info(d4);
+
+    std::cout << "Test passed ✅\n";
 
     return 0;
 }

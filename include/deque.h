@@ -568,6 +568,42 @@ namespace opendsa
 
         // Element access methods
 
+        reference at(size_type pos)
+        {
+            if (pos >= this->size())
+            {
+                const std::string msg = "Index " + std::string(pos)
+                                        + " is out of bound, which is "
+                                        + std::string(this->size());
+                throw std::runtime_error(msg);
+            }
+
+            return (*this)[pos];
+        }
+
+        const_reference at(size_type pos) const
+        {
+            if (pos >= this->size())
+            {
+                const std::string msg = "Index " + std::string(pos)
+                                        + " is out of bound, which is "
+                                        + std::string(this->size());
+                throw std::runtime_error(msg);
+            }
+
+            return (*this)[pos];
+        }
+
+        reference operator[](size_type pos)
+        {
+            return this->_start[difference_type(pos)];
+        }
+
+        const_reference operator[](size_type pos) const
+        {
+            return this->_start[difference_type(pos)];
+        }
+
         /**
          * @brief Returns a reference to the first element in the container.
          *
@@ -980,6 +1016,13 @@ namespace opendsa
             return begin() + offset;
         }
 
+        /**
+         * @brief Removes the first element.
+         *
+         * pop_front() basically removes the first element on the deque. This
+         * will shrink the size by one. It also returns no value so if the first
+         * element is needed before being popped, use front() first.
+         */
         void pop_front() noexcept
         {
             _NON_EMPTY_DEQUE("Cannot use pop_front() on an empty deque");
@@ -992,6 +1035,13 @@ namespace opendsa
                 _pop_front_aux();
         }
 
+        /**
+         * @brief Removes the last element.
+         *
+         * pop_back() basically removes the last element on the deque. This will
+         * shrink the size by one. It also returns no value so if the last
+         * element is needed before popped, use back() first.
+         */
         void pop_back() noexcept
         {
             _NON_EMPTY_DEQUE("Cannot use pop_back() on an empty deque");
@@ -1004,22 +1054,55 @@ namespace opendsa
                 _pop_back_aux();
         }
 
+        /**
+         * @brief Removes the element at position.
+         *
+         * @param position Iterator where to delete the element.
+         *
+         * erase() will erase the element at the given position, so it will
+         * shirnk the size of the deque by one.
+         */
         iterator erase(const_iterator position)
         {
             return _erase(begin() + (position - cbegin()));
         }
 
+        /**
+         * @brief Removes the elements in range [first, last).
+         *
+         * @param first Iterator to the first element to be deleted.
+         * @param last Iterator to one past the last element to be deleted.
+         */
         iterator erase(const_iterator first, const_iterator last)
         {
             return _erase_range(begin() + (first - cbegin()),
                                 begin() + (last - cbegin()));
         }
 
+        /**
+         * @brief Resizes the deque to `count`.
+         *
+         * @param count New number of elements the deque should contain.
+         *
+         * resize() will modify the current size of the deque to the new size,
+         * count. If count < size, the deque will be truncated. If count > size,
+         * new default constructed elements of type _Tp are appended at the end.
+         */
         void resize(size_type count)
         {
             resize(count, value_type());
         }
 
+        /**
+         * @brief Resizes the deque to `count`.
+         *
+         * @param count New number of elements the deque should contain.
+         * @param value Data to be appended.
+         *
+         * resize() will modify the current size of the deque to the new size,
+         * count. if count < size, the deque will be truncated. If count > size,
+         * copies of `value` are appended at the end.
+         */
         void resize(size_type count, const value_type &value)
         {
             const size_type len = size();
@@ -1029,11 +1112,26 @@ namespace opendsa
                 _erase_to_end(this->_start + difference_type(count));
         }
 
+        /**
+         * @brief Erases all the elements in the deque.
+         *
+         * clear() will erase all the elements currently in the deque. If the
+         * elements are pointers, the memory they point to will remain, and
+         * require manual managment. After this call, size() will return 0.
+         */
         void clear()
         {
             _erase_to_end(begin());
         }
 
+        /**
+         * @brief Swaps the content between two deques.
+         *
+         * @param other Another deque of the same element and allocator type.
+         *
+         * swap() guarantees fast content swapping in constant time, which means
+         * there is no copying, moving, allocating or deallocating whatsoever.
+         */
         void swap(deque &other) noexcept
         {
             map_pointer tmp_map    = other._map;
