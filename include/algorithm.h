@@ -28,6 +28,15 @@ namespace opendsa
         c[0];
     };
 
+    template <typename Container, typename Type>
+    concept FIFOSequenceContainer = requires(Container c, Type t)
+    {
+        requires std::same_as<typename Container::value_type, Type>;
+
+        c.pop_front();
+        c.push_back(t);
+    };
+
     /**
      * @brief Median of two sorted array
      *
