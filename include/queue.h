@@ -21,6 +21,7 @@ namespace opendsa
     requires FIFOSequenceContainer<_Sequence, _Tp>
     class queue
     {
+
     public:
         using value_type      = _Sequence::value_type;
         using reference       = _Sequence::reference;
@@ -28,10 +29,43 @@ namespace opendsa
         using size_type       = _Sequence::size_type;
         using container_type  = _Sequence;
 
-        queue() : c() {}
+        /**
+         * @brief Constructs a queue with no elements.
+         */
+        queue() : _cont() {}
+
+        /**
+         * @brief Constructs a queue by copying the container of same type
+         * _Sequence.
+         *
+         * @param c Another container of type _Sequence.
+         */
+        explicit queue(const container_type &c) : _cont(c) {}
+
+        /**
+         * @brief Constructs a queue by moving the contianer of same type
+         * _Sequence.
+         *
+         * @param c Another container of type _Sequence.
+         */
+        explicit queue(container_type &&c) : _cont(std::move(c)) {}
+
+        /**
+         * @brief Constructs a queue by copying an existing queue.
+         *
+         * @param q Another existing queue of the same.
+         */
+        queue(const queue &q) : _cont(q._cont) {}
+
+        /**
+         * @brief Constructs a queue by moving an existing queue.
+         *
+         * @param q  Another existing queue of the same
+         */
+        queue(queue &&q) : _cont(std::move(q._cont)) {}
 
     private:
-        _Sequence c;
+        _Sequence _cont;
     };
 } // namespace opendsa
 
