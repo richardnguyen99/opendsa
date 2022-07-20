@@ -42,6 +42,15 @@ namespace opendsa
 
         c.pop_front();
         c.push_back(t);
+        c.emplace_back(t);
+    };
+
+    template <typename Container, typename Type>
+    concept SwappableContainer = requires(Container x, Container y)
+    {
+        requires std::same_as<typename Container::value_type, Type>;
+
+        x.swap(y);
     };
 
     /**

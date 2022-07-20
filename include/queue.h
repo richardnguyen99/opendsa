@@ -18,7 +18,8 @@
 namespace opendsa
 {
     template <typename _Tp, typename _Sequence = opendsa::deque<_Tp>>
-    requires FIFOSequenceContainer<_Sequence, _Tp>
+    requires FIFOSequenceContainer<_Sequence,
+                                   _Tp> && SwappableContainer<_Sequence, _Tp>
     class queue
     {
 
@@ -115,6 +116,74 @@ namespace opendsa
         size_type size() const
         {
             return _cont.size();
+        }
+
+        // Modifier
+
+        /**
+         * @brief Add new data to the end of the %queue.
+         *
+         * @param x  New data to be pushed.
+         *
+         * This typical queue operation will depend on what the underlying.
+         * container is.
+         */
+        void push(const value_type &x)
+        {
+            _cont.push_back(x);
+        }
+
+        /**
+         * @brief Add an rvalue data to the end of the %queue.
+         *
+         * @param x Rvalue data to be pushed.
+         *
+         * This typical queue operation will depend on what the underlying.
+         * container is.
+         */
+        void push(value_type &&x)
+        {
+            _cont.push_back(std::move(x));
+        }
+
+        /**
+         * @brief Constructs a new data at the end of the %queue.
+         *
+         * @param args Argument list to create a new data of type _Tp.
+         *
+         * This typical queue operation will depend on what the underlying
+         * container is.
+         */
+        template <typename... Args>
+        decltype(auto) emplace(Args &&...args)
+        {
+            return _cont.emplace_back(std::forward<Args>(args)...);
+        }
+
+        /**
+         * @brief Removes the first item on the %queue.
+         *
+         * This typical queue operation will shrink the size by one. The time
+         * complexity will depend on how pop() is implemented in the underlying
+         * container. Also, it doesn't return anything if data is needed(), use
+         * front() before popping.
+         */
+        void pop()
+        {
+            _cont.pop_front();
+        }
+
+        /**
+         * @brief Swaps the content between two queues.
+         *
+         * @param q Other existing queue.
+         *
+         * The time complexity of this function will depend on the swapping
+         * technique of the underlying container.
+         */
+        void swap(queue &q)
+        {
+            _cont.swap(q._cont);
         }
 
     private:
