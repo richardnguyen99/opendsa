@@ -99,6 +99,24 @@ namespace opendsa
             return _cont.back();
         }
 
+        // Capacity
+
+        /**
+         * @brief Returns true if the %queue is empty.
+         */
+        bool empty() const
+        {
+            return _cont.empty();
+        }
+
+        /**
+         * @brief  Returns number of elements in the %queue.
+         */
+        size_type size() const
+        {
+            return _cont.size();
+        }
+
     private:
         _Sequence _cont;
     };
