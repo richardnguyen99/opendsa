@@ -7,6 +7,7 @@
             "args": [
                 "-std=c++2a",
                 "-D DEBUG",
+                "-I./include",
                 "-g",
                 "${file}",
                 "-o",

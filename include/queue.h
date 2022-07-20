@@ -12,8 +12,8 @@
 #ifndef __OPENDSA_QUEUE_H
 #define __OPENDSA_QUEUE_H 1
 
-#include <opendsa/algorithm>
-#include <opendsa/deque>
+#include "algorithm.h"
+#include "deque.h"
 
 namespace opendsa
 {
@@ -63,6 +63,41 @@ namespace opendsa
          * @param q  Another existing queue of the same
          */
         queue(queue &&q) : _cont(std::move(q._cont)) {}
+
+        // Elements access
+
+        /**
+         * @brief Returns a read/write reference to the first item of the
+         * %queue.
+         */
+        reference front()
+        {
+            return _cont.front();
+        }
+
+        /**
+         * @brief Returns a readonly reference to the first item of the %queue.
+         */
+        const_reference front() const
+        {
+            return _cont.front();
+        }
+
+        /**
+         * @brief Returns a read/write reference to the last item of the %queue.
+         */
+        reference back()
+        {
+            return _cont.back();
+        }
+
+        /**
+         * @brief Returns a readonly reference to the last item of the %queue.
+         */
+        const_reference back() const
+        {
+            return _cont.back();
+        }
 
     private:
         _Sequence _cont;

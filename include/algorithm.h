@@ -32,6 +32,13 @@ namespace opendsa
     concept FIFOSequenceContainer = requires(Container c, Type t)
     {
         requires std::same_as<typename Container::value_type, Type>;
+        {
+            c.front()
+            } -> std::same_as<Type &>;
+
+        {
+            c.back()
+            } -> std::same_as<Type &>;
 
         c.pop_front();
         c.push_back(t);

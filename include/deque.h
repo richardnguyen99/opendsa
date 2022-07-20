@@ -489,7 +489,7 @@ namespace opendsa
          * This constructor creates a deque object by filling it with @a n
          * copies of @a value.
          */
-        deque(size_type count, const value_type &value)
+        explicit deque(size_type count, const value_type &value)
             : _start(), _finish(), _map(), _map_size()
         {
             _initialize_map(count);
@@ -547,6 +547,19 @@ namespace opendsa
         {
             _range_construct(other.cbegin(), other.cend(),
                              std::random_access_iterator_tag());
+        }
+
+        deque(deque &&other)
+        {
+            this->_start    = other._start;
+            this->_finish   = other._finish;
+            this->_map      = other._map;
+            this->_map_size = other._map_size;
+
+            other._start    = iterator();
+            other._finish   = iterator();
+            other._map      = nullptr;
+            other._map_size = 0;
         }
 
         /**

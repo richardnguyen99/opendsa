@@ -131,10 +131,12 @@ int main(int argc, const char **argv)
 
     d4.swap(d3);
     d4.insert(d4.cbegin(), {1, 2, 3, 4, 5, 6, 7, 8});
+    opendsa::deque<int> d5(std::move(d4));
+    std::cout << d4.front() << "\n";
 
-    test_get_deque_info(d);
-    test_get_deque_info(d3);
-    test_get_deque_info(d4);
+    // test_get_deque_info(d);
+    // test_get_deque_info(d3);
+    // test_get_deque_info(d4);
 
     std::cout << "Test passed ✅\n";
 
