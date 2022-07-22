@@ -579,6 +579,58 @@ namespace opendsa
             }
         }
 
+        deque &operator=(const deque &x)
+        {
+            if (&x != this)
+            {
+                const size_type len = size();
+                if (len > x.size())
+                {
+                    iterator delete_start
+                        = std::copy(x.cbegin(), x.cend(), this->_start);
+                    _erase_to_end(delete_start);
+                }
+                else
+                {
+                    const_iterator mid = x.cbegin() + difference_type(len);
+                    std::copy(x.cbegin(), mid, this->_start);
+                    _range_insert_aux(this->_finish, mid, x.cend(),
+                                      std::random_access_iterator_tag());
+                }
+            }
+
+            return *this;
+        }
+
+        deque &operator=(deque &&x) noexcept
+        {
+            this->swap(x);
+            x.clear();
+
+            return *this;
+        }
+
+        deque &operator=(std::initializer_list<value_type> l)
+        {
+            const size_type len = l.size();
+            if (len > size())
+            {
+                typename std::initializer_list<value_type>::iterator mid
+                    = l.begin();
+                std::advance(mid, size());
+                std::copy(l.begin(), mid, begin());
+                _range_insert_aux(end(), mid, l.end(),
+                                  std::random_access_iterator_tag());
+            }
+            else
+            {
+                iterator delete_start = std::copy(l.begin(), l.end(), begin());
+                _erase_to_end(delete_start);
+            }
+
+            return *this;
+        }
+
         // Element access methods
 
         reference at(size_type pos)
