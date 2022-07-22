@@ -11,6 +11,7 @@
 #ifndef __OPENDSA_TREE_H
 #define __OPENDSA_TREE_H 1
 
+#include <cstddef>
 #include <memory>
 
 namespace opendsa
@@ -62,7 +63,7 @@ namespace opendsa
             else
             {
                 base_ptr _x_parent = _x->_parent;
-                while (_x == _x_parent->_right)
+                while (_x_parent && _x == _x_parent->_right)
                 {
                     _x        = _x_parent;
                     _x_parent = _x_parent->_parent;
@@ -125,6 +126,52 @@ namespace opendsa
         {
             return std::addressof(_storage);
         }
+    };
+
+    template <typename _Tp>
+    struct tree_iterator
+    {
+        using value_type = _Tp;
+        using reference  = _Tp &;
+        using pointer    = _Tp *;
+
+        using iterator_category = std::bidirectional_iterator_tag;
+        using difference_type   = std::ptrdiff_t;
+        using size_type         = std::size_t;
+
+        using self      = tree_iterator<_Tp>;
+        using base      = _tree_node_base;
+        using base_ptr  = _tree_node_base::base_ptr;
+        using link_type = _tree_node<_Tp> *;
+
+        tree_iterator() noexcept : _node() {}
+
+        explicit tree_iterator(base_ptr _x) noexcept : _node(_x) {}
+
+        reference operator*() const noexcept
+        {
+            return *static_cast<link_type>(_node)->getptr();
+        }
+
+        pointer operator->() const noexcept
+        {
+            return static_cast<link_type>(_node)->getptr();
+        }
+
+        self &operator++() noexcept
+        {
+            _node = base::_increment(_node);
+            return *this;
+        }
+
+        self operator++(int) noexcept
+        {
+            self tmp = *this;
+            _node    = base::_increment(_node);
+            return tmp;
+        }
+
+        base_ptr _node;
     };
 
     /**
