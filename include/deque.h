@@ -138,9 +138,7 @@ public:
      * @param other Other deque iterator of the same.
      */
     deque_iterator(const deque_iterator &other) noexcept
-    : _curr(other._curr),
-      _first(other._first),
-      _last(other._last),
+    : _curr(other._curr), _first(other._first), _last(other._last),
       _node(other._node)
     {
     }
