@@ -228,7 +228,48 @@ public:
         this->_default_initialize(_n);
     }
 
+    singly_list(size_type _n, const value_type &_x)
+    {
+        this->_fill_initialize(_n, _x);
+    }
+
     ~singly_list() { this->_erase_after(&this->_header, nullptr); }
+
+    iterator
+    before_begin() noexcept
+    {
+        return iterator(&this->_header);
+    }
+
+    const_iterator
+    cbefore_begin() const noexcept
+    {
+        return const_iterator(&this->_header);
+    }
+
+    iterator
+    begin() noexcept
+    {
+        return iterator(this->_header._next);
+    }
+
+    const_iterator
+    cbegin() const noexcept
+    {
+        return const_iterator(this->_header._next);
+    }
+
+    iterator
+    end() noexcept
+    {
+        return iterator(nullptr);
+    }
+
+    const_iterator
+    cend() const noexcept
+    {
+        return const_iterator(nullptr);
+    }
 
 private:
     _Sgl_list_node_base _header;
@@ -269,6 +310,17 @@ private:
         for (; _n; --_n)
         {
             _start->_next = this->_create_node();
+            _start        = _start->_next;
+        }
+    }
+    void
+    _fill_initialize(size_type _n, const value_type &_x)
+    {
+        node_base *_start = &this->_header;
+
+        for (; _n; --_n)
+        {
+            _start->_next = this->_create_node(_x);
             _start        = _start->_next;
         }
     }
