@@ -14,6 +14,7 @@
 
 #include <cstddef>
 #include <initializer_list>
+#include <iterator>
 #include <memory>
 
 namespace opendsa
@@ -245,7 +246,7 @@ public:
      * value @a _x.
      *
      * @param _n Number of elements to insert.
-     * @param _x Value to create copies
+     * @param _x Value to create copies.
      *
      * This constructor will initialize and fill the singly-linked list with _n
      * copies of element _x. If type @a _Tp is user-defined, a copy constructor
@@ -254,6 +255,20 @@ public:
     singly_list(size_type _n, const value_type &_x)
     {
         this->_fill_initialize(_n, _x);
+    }
+
+    template <typename _InputIter,
+              typename = typename std::enable_if<std::is_convertible<
+                  typename std::iterator_traits<_InputIter>::iterator_category,
+                  std::input_iterator_tag>::value>::type>
+    singly_list(_InputIter _first, _InputIter _last)
+    {
+        this->_range_initialize(_first, _last);
+    }
+
+    singly_list(const singly_list &_other)
+    {
+        this->_range_initialize(_other.cbegin(), _other.cend());
     }
 
     /**
