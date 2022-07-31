@@ -271,6 +271,12 @@ public:
         this->_range_initialize(_other.cbegin(), _other.cend());
     }
 
+    singly_list(singly_list &&_other)
+    {
+        this->_header._next  = _other._header._next;
+        _other._header._next = nullptr;
+    }
+
     /**
      * @brief Constructs a singly-linked list with data from an initializer
      * list.
