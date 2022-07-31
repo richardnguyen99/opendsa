@@ -13,7 +13,7 @@
 #define __OPENDSA_SGL_LIST_H 1
 
 #include <cstddef>
-#include <forward_list>
+#include <initializer_list>
 #include <memory>
 
 namespace opendsa
@@ -221,18 +221,55 @@ public:
     using difference_type = std::ptrdiff_t;
     using allocator_type  = _Alloc;
 
+    /**
+     * @brief Constructs an empty singly-linked list.
+     */
     singly_list() : _header() { }
 
+    /**
+     * @brief Constructs a singly-linked list with @a _n of
+     * default-inserted instances of type @a _Tp.
+     *
+     * @param _n Number of elements to insert.
+     *
+     * There is no copy happening but default constructor must be provided in
+     * type @a _Tp if it's a user-defined type.
+     */
     explicit singly_list(size_type _n) : _header()
     {
         this->_default_initialize(_n);
     }
 
+    /**
+     * @brief Constructs a singly-linked list with @a _n copies of elements with
+     * value @a _x.
+     *
+     * @param _n Number of elements to insert.
+     * @param _x Value to create copies
+     *
+     * This constructor will initialize and fill the singly-linked list with _n
+     * copies of element _x. If type @a _Tp is user-defined, a copy constructor
+     * must be provided.
+     */
     singly_list(size_type _n, const value_type &_x)
     {
         this->_fill_initialize(_n, _x);
     }
 
+    /**
+     * @brief Constructs a singly-linked list with data from an initializer
+     * list.
+     *
+     * @param _list An initializer list of type _Tp
+     */
+    singly_list(std::initializer_list<_Tp> _list)
+    {
+        this->_range_initialize(_list.begin(), _list.end());
+    }
+
+    /**
+     * @brief Destroys data and free allocated in the %singly_list
+     */
     ~singly_list() { this->_erase_after(&this->_header, nullptr); }
 
     iterator
@@ -247,24 +284,40 @@ public:
         return const_iterator(&this->_header);
     }
 
+    /**
+     * @brief Returns read/write iterator that points to the first element in
+     * the %singly_list.
+     */
     iterator
     begin() noexcept
     {
         return iterator(this->_header._next);
     }
 
+    /**
+     * @brief Returns readonly iterator that points to the first element in the
+     * %singly_list.
+     */
     const_iterator
     cbegin() const noexcept
     {
         return const_iterator(this->_header._next);
     }
 
+    /**
+     * @brief Returns a read/write iterator that points to one past the last
+     * element in the %singly_list.
+     */
     iterator
     end() noexcept
     {
         return iterator(nullptr);
     }
 
+    /**
+     * @brief Returns a readonly iterator that points to one past the last
+     * element in the %singly_list.
+     */
     const_iterator
     cend() const noexcept
     {
@@ -313,6 +366,7 @@ private:
             _start        = _start->_next;
         }
     }
+
     void
     _fill_initialize(size_type _n, const value_type &_x)
     {
@@ -325,20 +379,48 @@ private:
         }
     }
 
+    template <typename _InputIterator>
+    void
+    _range_initialize(_InputIterator _first, _InputIterator _last)
+    {
+        node_base *_start = &this->_header;
+
+        for (; _first != _last; ++_first)
+        {
+            _start->_next = this->_create_node(*_first);
+            _start        = _start->_next;
+        }
+    }
+
+    /**
+     * @brief Helper method to erase data in range (_start, _end)
+     *
+     * @param _start First pointer in range
+     * @param _end Last pointer in range
+     */
     node_base *
     _erase_after(node_base *_start, node_base *_end)
     {
+
+        // Start to erase after _start
         node *_curr = static_cast<node *>(_start->_next);
 
+        // If there are elements in range (_start, _end)
         while (_curr != static_cast<node *>(_end))
         {
+            // Erase the current node to traverse to the next node iteratively
             node *_tmp = _curr;
             _curr      = static_cast<node *>(_curr->_next);
+
             node_traits::destroy(_node_alloc, _tmp->valptr());
+
+            // Since nodes are directly constructed through placement new,
+            // placement delete should be called as well.
             _tmp->~node();
             node_traits::deallocate(_node_alloc, _tmp, 1);
         }
 
+        // Update the new singly-linked list
         _start->_next = _end;
         return _end;
     }
