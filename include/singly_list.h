@@ -141,11 +141,12 @@ struct _Sgl_list_iterator
 template <typename _Tp>
 struct _Sgl_list_const_iterator
 {
-    using _self = _Sgl_list_const_iterator<_Tp>;
+    using _self     = _Sgl_list_const_iterator<_Tp>;
+    using _iterator = _Sgl_list_iterator<_Tp>;
 
     using value_type      = _Tp;
-    using reference       = _Tp &;
-    using pointer         = _Tp *;
+    using reference       = const _Tp &;
+    using pointer         = const _Tp *;
     using difference_type = std::ptrdiff_t;
 
     // Singly-linked-list is forward directional, which means it can only go
@@ -154,25 +155,30 @@ struct _Sgl_list_const_iterator
     // overloaded to make the iterator move backward.
     using iterator_category = std::forward_iterator_tag;
 
-    _Sgl_list_node_base *_node;
+    const _Sgl_list_node_base *_node;
 
     _Sgl_list_const_iterator() noexcept : _node() { }
 
-    explicit _Sgl_list_const_iterator(_Sgl_list_node_base *_n) noexcept
+    explicit _Sgl_list_const_iterator(const _Sgl_list_node_base *_n) noexcept
     : _node(_n)
+    {
+    }
+
+    _Sgl_list_const_iterator(const _iterator &_iter) noexcept
+    : _node(_iter._node)
     {
     }
 
     reference
     operator*() const noexcept
     {
-        return *static_cast<_Sgl_list_node<_Tp> *>(this->_node)->valptr();
+        return *static_cast<const _Sgl_list_node<_Tp> *>(this->_node)->valptr();
     }
 
     pointer
     operator->() const noexcept
     {
-        return static_cast<_Sgl_list_node<_Tp> *>(this->_node)->valptr();
+        return static_cast<const _Sgl_list_node<_Tp> *>(this->_node)->valptr();
     }
 
     _self &
@@ -429,6 +435,27 @@ public:
         return node_traits::max_size(this->_node_alloc);
     }
 
+    /**
+     * @brief Erases all elements in the %singly_list.
+     *
+     * This method only removes the elements held in the %singly_list. If the
+     * elements are pointers, the pointed-to-memory is not touched in any way.
+     *
+     * Any references, iterators or pointers, except those past-the-end,
+     * referring to the container elements is invalidated.
+     */
+    void
+    clear() noexcept
+    {
+        this->_erase_after(&this->_header, nullptr);
+    }
+
+    iterator
+    insert_after(const_iterator pos, const value_type &value)
+    {
+        return iterator(this->_insert_after(pos, value));
+    }
+
 private:
     _Sgl_list_node_base _header;
     _Alloc _alloc;
@@ -499,6 +526,21 @@ private:
             _start->_next = this->_create_node(*_first);
             _start        = _start->_next;
         }
+    }
+
+    template <typename... _Args>
+    node_base *
+    _insert_after(const_iterator _pos, _Args &&..._args)
+    {
+        // Create a new node with object.
+        node *_new_node  = this->_create_node(std::forward<_Args>(_args)...);
+        node_base *_curr = const_cast<node_base *>(_pos._node);
+
+        // Insert
+        _new_node->_next = _curr->_next;
+        _curr->_next     = _new_node;
+
+        return _curr->_next;
     }
 
     /**
