@@ -498,6 +498,14 @@ public:
         return iterator(const_cast<node_base *>(pos._node));
     }
 
+    /**
+     * @brief Inserts elements from range [first, last) after the specified
+     * position pos in the %singly_list.
+     *
+     * @param pos Iterator to insert elements after.
+     * @param first Iterator to indicate the lower bound inclusively.
+     * @param last Iterator to indicate the upper bound exclusively.
+     */
     template <typename _InputIter,
               typename = typename std::enable_if<std::is_convertible<
                   typename std::iterator_traits<_InputIter>::iterator_category,
@@ -516,6 +524,13 @@ public:
         return iterator(const_cast<node_base *>(pos._node));
     }
 
+    /**
+     * @brief Inserts elements from a given initializer list after the specified
+     * position pos in the %singly_list.
+     *
+     * @param pos Iterator to insert elements after.
+     * @param list Initializer list to insert values from.
+     */
     iterator
     insert_after(const_iterator pos, std::initializer_list<value_type> list)
     {

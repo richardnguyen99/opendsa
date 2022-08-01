@@ -97,6 +97,73 @@ test_list_insert_after(opendsa::singly_list<T> &list, std::size_t count,
     std::cout << "\n";
 }
 
+template <typename T, typename InputIter>
+void
+test_list_insert_after(opendsa::singly_list<T> &list, InputIter first,
+                       InputIter end, std::ptrdiff_t pos,
+                       const std::string &list_name)
+{
+    std::cout << "========= Test " << list_name
+              << "::insert_after() range =========\n";
+
+    typename opendsa::singly_list<T>::const_iterator iter;
+
+    if (pos == -1)
+        iter = list.cbefore_begin();
+    else
+    {
+        iter = list.cbegin();
+        for (; pos; --pos, ++iter)
+        {
+        }
+    }
+
+    std::cout << "- Before inserting: \n  ";
+    print(list);
+
+    list.insert_after(iter, first, end);
+
+    std::cout << "- After inserting: \n  ";
+    print(list);
+
+    std::cout << "\n";
+}
+
+template <typename T>
+void
+test_list_insert_after(opendsa::singly_list<T> &list,
+                       std::initializer_list<T> ilist, std::ptrdiff_t pos,
+                       const std::string &list_name)
+{
+    std::cout << "========= Test " << list_name << "::insert_after(" << pos
+              << ", { ";
+    std::for_each(ilist.begin(), ilist.end(),
+                  [](const auto &e) { std::cout << e << ", "; });
+    std::cout << "}) =========\n";
+
+    typename opendsa::singly_list<T>::const_iterator iter;
+
+    if (pos == -1)
+        iter = list.cbefore_begin();
+    else
+    {
+        iter = list.cbegin();
+        for (; pos; --pos, ++iter)
+        {
+        }
+    }
+
+    std::cout << "- Before inserting: \n  ";
+    print(list);
+
+    list.insert_after(iter, ilist);
+
+    std::cout << "- After inserting: \n  ";
+    print(list);
+
+    std::cout << "\n";
+}
+
 int
 main(int argc, const char **argv)
 {
@@ -105,6 +172,7 @@ main(int argc, const char **argv)
     opendsa::singly_list<int> sgl_list3(sgl_list1.begin(), sgl_list1.end());
     opendsa::singly_list<int> sgl_list4(sgl_list2);
     opendsa::singly_list<int> sgl_list5(std::move(sgl_list2));
+    opendsa::singly_list<int> sgl_list6({1, 2, 3, 4, 9, 10, 11, 12});
 
     test_list_info(sgl_list1, "singly-linked list 1");
     test_list_info(sgl_list2, "singly-linked list 2");
@@ -114,10 +182,21 @@ main(int argc, const char **argv)
 
     test_list_insert_after(sgl_list5, 0, -1, "sgl_list5");
     test_list_insert_after(sgl_list5, 9, 8, "sgl_list5");
+
     test_list_insert_after(sgl_list1, 8, 3, -1, "sgl_list1");
     test_list_insert_after(sgl_list1, 8, 5, 15, "sgl_list1");
     test_list_insert_after(sgl_list1, 4, 7, 23, "sgl_list1");
     test_list_insert_after(sgl_list1, 4, 6, 23, "sgl_list1");
+
+    test_list_insert_after(sgl_list5, sgl_list3.begin(), sgl_list3.end(), -1,
+                           "sgl_list5");
+    test_list_insert_after(sgl_list5, sgl_list3.begin(), sgl_list3.end(), 8,
+                           "sgl_list5");
+
+    test_list_insert_after(sgl_list6, {5, 6, 7, 8}, 3, "sgl_list6");
+    test_list_insert_after(sgl_list6, {13, 14, 15, 16}, 11, "sgl_list6");
+    test_list_insert_after(sgl_list6, {-3, -2, -1, 0}, -1, "sgl_list6");
+    test_list_insert_after(sgl_list6, {}, -1, "sgl_list6");
 
     return 0;
 }
