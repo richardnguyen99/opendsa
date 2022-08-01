@@ -257,6 +257,17 @@ public:
         this->_fill_initialize(_n, _x);
     }
 
+    /**
+     * @brief Constructs a singly-linked list with data in range [_first,
+     * _last).
+     *
+     * @param _first Iterator pointing to the first element in range.
+     * @param _last  Iterator pointing to the last element in range exclusively.
+     *
+     * This constructor will initialize and fill the singly-linked list with the
+     * data in range [_first, _last). If type @a _Tp is user-defined, a copy
+     * constructor must be provided.
+     */
     template <typename _InputIter,
               typename = typename std::enable_if<std::is_convertible<
                   typename std::iterator_traits<_InputIter>::iterator_category,
@@ -266,11 +277,28 @@ public:
         this->_range_initialize(_first, _last);
     }
 
+    /**
+     * @brief Constructs a singly-linked list by copying data from _other.
+     *
+     * @param _other Another singly-linked list to copy.
+     *
+     * This constructor will initialize and fill the singly-linked list with
+     * data in _other singly_list. If type @a _Tp is user-defined, a copy
+     * constructor must be provided.
+     */
     singly_list(const singly_list &_other)
     {
         this->_range_initialize(_other.cbegin(), _other.cend());
     }
 
+    /**
+     * @brief Constructs a singly-linked list by moving data from _other.
+     *
+     * @param _other Another singly-linked list to move.
+     *
+     * This constructor will initialize and fill the singly-linked list by
+     * moving the data from _other. No copies are made.
+     */
     singly_list(singly_list &&_other)
     {
         this->_header._next  = _other._header._next;
@@ -282,6 +310,10 @@ public:
      * list.
      *
      * @param _list An initializer list of type _Tp
+     *
+     * This constructor will initialize and fill the singly-linked list with
+     * data in the initializer list (like C-style arrays). If @a _Tp is
+     * user-defined, a copy constructor must be provided.
      */
     singly_list(std::initializer_list<_Tp> _list)
     {
@@ -293,12 +325,46 @@ public:
      */
     ~singly_list() { this->_erase_after(&this->_header, nullptr); }
 
+    /**
+     * @brief Returns a read/write reference to the first element of the
+     * %singly_list.
+     */
+    reference
+    front()
+    {
+        return *begin();
+    }
+
+    /**
+     * @brief Returns a readonly reference to the first element of the
+     * %singly_list.
+     */
+    const_reference
+    front() const
+    {
+        return *cbegin();
+    }
+
+    /**
+     * @brief Returns a read/write iterator that points to one before the first
+     * element in the %singly_list.
+     *
+     * This iterator serves as a placeholder for modifications. Attempting to
+     * access (dereference) it will result in undefined behavior.
+     */
     iterator
     before_begin() noexcept
     {
         return iterator(&this->_header);
     }
 
+    /**
+     * @brief Returns a write iterator that points to one before the first
+     * element in the %singly_list.
+     *
+     * This iterator serves as a placeholder for modifications. Attempting to
+     * access (dereference) it will result in undefined behavior.
+     */
     const_iterator
     cbefore_begin() const noexcept
     {
@@ -343,6 +409,24 @@ public:
     cend() const noexcept
     {
         return const_iterator(nullptr);
+    }
+
+    /**
+     * @brief Returns true if the %singly_list is empty. (begin() == end())
+     */
+    [[nodiscard]] bool
+    empty() const noexcept
+    {
+        return this->_header._next == nullptr;
+    }
+
+    /**
+     * @brief Returns the largest possible number of elements of %singly_list.
+     */
+    size_type
+    max_size() const noexcept
+    {
+        return node_traits::max_size(this->_node_alloc);
     }
 
 private:
@@ -400,6 +484,10 @@ private:
         }
     }
 
+    /**
+     * @brief Helper method to initialize data from a given range. The range is
+     * specified by iterators provided in the container, i.e. begin(), end().
+     */
     template <typename _InputIterator>
     void
     _range_initialize(_InputIterator _first, _InputIterator _last)
