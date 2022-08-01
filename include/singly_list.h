@@ -498,6 +498,38 @@ public:
         return iterator(const_cast<node_base *>(pos._node));
     }
 
+    template <typename _InputIter,
+              typename = typename std::enable_if<std::is_convertible<
+                  typename std::iterator_traits<_InputIter>::iterator_category,
+                  std::input_iterator_tag>::value>::type>
+    iterator
+    insert_after(const_iterator pos, _InputIter first, _InputIter last)
+    {
+        // Create a temporary singly-linked list
+        singly_list _tmp(first, last);
+
+        if (!_tmp.empty())
+            // If that list is not empty, splice (move) the entire data to this
+            // %singly_list.
+            return this->_splice_after(pos, _tmp.cbefore_begin(), _tmp.cend());
+
+        return iterator(const_cast<node_base *>(pos._node));
+    }
+
+    iterator
+    insert_after(const_iterator pos, std::initializer_list<value_type> list)
+    {
+        // Create a temporary singly-linked list
+        singly_list _tmp(list.begin(), list.end());
+
+        if (!_tmp.empty())
+            // If that list is not empty, splice (move) the entire data to this
+            // %singly_list.
+            return this->_splice_after(pos, _tmp.cbefore_begin(), _tmp.cend());
+
+        return iterator(const_cast<node_base *>(pos._node));
+    }
+
 private:
     _Sgl_list_node_base _header;
     _Alloc _alloc;
