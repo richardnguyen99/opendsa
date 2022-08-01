@@ -450,10 +450,52 @@ public:
         this->_erase_after(&this->_header, nullptr);
     }
 
+    /**
+     * @brief Inserts a new element after the specified position _pos in the
+     * %singly_list.
+     *
+     * @param pos Iterator to insert a new data after.
+     * @param value New data to insert.
+     */
     iterator
     insert_after(const_iterator pos, const value_type &value)
     {
         return iterator(this->_insert_after(pos, value));
+    }
+
+    /**
+     * @brief Inserts a new rvalue element after the specified position pos in
+     * the %singly_list.
+     *
+     * @param pos Iterator to insert a new data after.
+     * @param value New rvalue data to insert.
+     */
+    iterator
+    insert_after(const_iterator pos, value_type &&value)
+    {
+        return iterator(this->_insert_after(pos, std::move(value)));
+    }
+
+    /**
+     * @brief Inserts count copies of value value after the specified position
+     * pos in the %singly_list.
+     *
+     * @param pos Iterator to insert a new data after.
+     * @param count Number of elements to insert.
+     * @param value Value to create copies.
+     */
+    iterator
+    insert_after(const_iterator pos, size_type count, const value_type &value)
+    {
+        // Create a temporary singly-linked list
+        singly_list _tmp(count, value);
+
+        if (!_tmp.empty())
+            // If that list is not empty, splice (move) the entire data to this
+            // %singly_list.
+            return this->_splice_after(pos, _tmp.cbefore_begin(), _tmp.cend());
+
+        return iterator(const_cast<node_base *>(pos._node));
     }
 
 private:
@@ -541,6 +583,55 @@ private:
         _curr->_next     = _new_node;
 
         return _curr->_next;
+    }
+
+    /**
+     * @brief Helper method that takes a range from another singly_list and
+     * inserts (moves) to this %singly_list.
+     *
+     * @param _pos Iterator to insert the data after.
+     * @param _before Iterator to indicate the range after.
+     * @param _last Iterator to indaicate the range before.
+     *
+     * The range of data will be (_before, _last). To move the entire list, the
+     * range should be (before_begin(), nullptr).
+     */
+    iterator
+    _splice_after(const_iterator _pos, const_iterator _before,
+                  const_iterator _last)
+    {
+        node_base *_curr = const_cast<node_base *>(_pos._node);
+        node_base *_bptr = const_cast<node_base *>(_before._node);
+        node_base *_eptr = _bptr;
+
+        // Move elements in range (before, last) so the end pointer _eptr is the
+        // one before _last.
+        while (_eptr && _eptr->_next != _last._node)
+            _eptr = _eptr->_next;
+
+        if (_bptr != _eptr)
+        {
+            // Preserve the content inside the range.
+            node_base *_preserve = _bptr->_next;
+
+            if (_eptr)
+            {
+                // Update the new range in the other %singly_list.
+                _bptr->_next = _eptr->_next;
+
+                // Plug the new range into the right end.
+                _eptr->_next = _curr->_next;
+            }
+            else
+                _bptr->_next = nullptr;
+
+            // Plug the new range into the left end.
+            _curr->_next = _preserve;
+
+            return iterator(_eptr);
+        }
+
+        return iterator(_curr);
     }
 
     /**
