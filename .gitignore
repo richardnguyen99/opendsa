@@ -35,6 +35,7 @@
 main.cpp
 main*
 build/
+dist/
 __*.h
 *.log
 
