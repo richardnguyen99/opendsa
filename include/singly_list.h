@@ -545,6 +545,24 @@ public:
         return iterator(const_cast<node_base *>(pos._node));
     }
 
+    /**
+     * @brief Inserts a new in-place-constructed element after the specified
+     * position pos in the %singly_list.
+     *
+     * @param pos Iterator to insert a new element after.
+     * @param args List of arguments to foward to the constructor of _Tp.
+     *
+     * This method will foward list of arguments and construct in-place a new
+     * element. Thus, no copies or moves are made. The list of arguments has to
+     * match with at least one constructor provided by _Tp.
+     */
+    template <typename... _Args>
+    iterator
+    emplace_after(const_iterator pos, _Args &&...args)
+    {
+        return iterator(this->_insert_after(pos, std::forward<_Args>(args)...));
+    }
+
 private:
     _Sgl_list_node_base _header;
     _Alloc _alloc;

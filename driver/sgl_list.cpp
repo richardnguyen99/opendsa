@@ -164,6 +164,37 @@ test_list_insert_after(opendsa::singly_list<T> &list,
     std::cout << "\n";
 }
 
+template <typename T, typename... _Args>
+void
+test_list_emplace_after(opendsa::singly_list<T> &list, std::ptrdiff_t pos,
+                        const std::string &list_name, _Args &&...args)
+{
+    std::cout << "========= Test " << list_name << "::emplace_after(" << pos
+              << ", ...) =========\n";
+
+    typename opendsa::singly_list<T>::const_iterator iter;
+
+    if (pos == -1)
+        iter = list.cbefore_begin();
+    else
+    {
+        iter = list.cbegin();
+        for (; pos; --pos, ++iter)
+        {
+        }
+    }
+
+    std::cout << "- Before inserting: \n  ";
+    print(list);
+
+    list.emplace_after(iter, std::forward<_Args>(args)...);
+
+    std::cout << "- After inserting: \n  ";
+    print(list);
+
+    std::cout << "\n";
+}
+
 int
 main(int argc, const char **argv)
 {
@@ -197,6 +228,10 @@ main(int argc, const char **argv)
     test_list_insert_after(sgl_list6, {13, 14, 15, 16}, 11, "sgl_list6");
     test_list_insert_after(sgl_list6, {-3, -2, -1, 0}, -1, "sgl_list6");
     test_list_insert_after(sgl_list6, {}, -1, "sgl_list6");
+
+    test_list_emplace_after(sgl_list6, -1, "sgl_list6", -5);
+    test_list_emplace_after(sgl_list6, 20, "sgl_list6", 17);
+    test_list_emplace_after(sgl_list6, 0, "sgl_list6", -4);
 
     return 0;
 }
