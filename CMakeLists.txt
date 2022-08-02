@@ -7,6 +7,17 @@ project(opendsa VERSION 1.0)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
+# Ignore testing option
+option(BUILD_TEST "Build the unit tests" ON)
+
+option(INSTALL_GMOCK "Install Googletest's GMock?" OFF)
+option(INSTALL_GTEST "Install Googletest's GTest?" OFF)
+
+# include tests
+if (BUILD_TEST)
+    add_subdirectory(test)
+endif()
+
 # add include directory for headers
 include_directories(include)
 
@@ -25,4 +36,3 @@ install(FILES include/queue.h DESTINATION include/opendsa RENAME queue)
 install(FILES include/algorithm.h DESTINATION include/opendsa RENAME algorithm)
 install(FILES include/iterator.h DESTINATION include/opendsa RENAME iterator)
 install(FILES include/helper.h DESTINATION include/opendsa RENAME helper)
-
